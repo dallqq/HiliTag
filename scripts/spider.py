@@ -33,23 +33,25 @@ def clean_text(text):
 def is_hiligaynon(text):
     """
     Positive heuristic for Hiligaynon. 
-    Checks for high-frequency Hiligaynon marker words.
+    Checks for high-frequency Hiligaynon marker words while strictly avoiding Tagalog overlaps.
     """
-    # Highly specific Hiligaynon particles, conjunctions, and pronouns
-    hiligaynon_markers = {" ang ", " sang ", " kag ", " nga ", " sa ", " kay ", " iya ", " niya ", " gid ", " man ", " ini ", " sila "}
-    text_lower = " " + text.lower() + " "
+    # Core Hiligaynon markers
+    hiligaynon_markers = {" ang ", " sang ", " kag ", " nga ", " sa ", " kay ", " iya ", " niya ", " gid ", " man ", " ini ", " sila ", " diri ", " didto "}
     
-    # Also filter out common English/Tagalog words just in case
-    exclude_markers = {" the ", " is ", " and ", " of ", " ng ", " na ", " mga "} 
+    # Strictly non-Hiligaynon (English + Tagalog specific markers). Note: 'mga' is removed.
+    exclude_markers = {" the ", " is ", " and ", " of ", " ng ", " na ", " yong ", " yung ", " upang ", " at ", " ngunit "} 
+    
+    text_lower = " " + text.lower() + " "
     
     hil_intersect = [w for w in hiligaynon_markers if w in text_lower]
     exc_intersect = [w for w in exclude_markers if w in text_lower]
     
-    # It must contain at least one Hiligaynon marker, and we relax the English limit
-    return len(hil_intersect) >= 1 and len(exc_intersect) <= 3
+    # Require at least 2 markers for better accuracy to avoid short-sentence false positives
+    return len(hil_intersect) >= 2 and len(exc_intersect) <= 2
 
 def crawl_and_scrape(session, base_url, fallback_url, container_tag, container_attr, container_val, max_sentences=2000, requires_lang_check=False):
     sentences_collected = []
+    seen_sentences = set() # Optimized tracking set for O(1) lookups
     visited_urls = set()
     
     urls_to_visit = [base_url, fallback_url]
@@ -77,7 +79,10 @@ def crawl_and_scrape(session, base_url, fallback_url, container_tag, container_a
             for a_tag in soup.find_all('a', href=True):
                 href = a_tag['href']
                 full_url = urljoin(current_url, href)
+                
+                # Strip fragments and queries for canonicalization
                 parsed_full = urlparse(full_url)
+                clean_url = parsed_full._replace(fragment="", query="").geturl()
                 
                 is_same_domain = base_domain in parsed_full.netloc
                 
@@ -87,8 +92,9 @@ def crawl_and_scrape(session, base_url, fallback_url, container_tag, container_a
                 else:
                     is_valid_path = True
                 
-                if is_same_domain and is_valid_path and full_url not in visited_urls and full_url not in urls_to_visit and len(urls_to_visit) < 5000:
-                    urls_to_visit.append(full_url)
+                # Append cleaned URL to queue
+                if is_same_domain and is_valid_path and clean_url not in visited_urls and clean_url not in urls_to_visit and len(urls_to_visit) < 5000:
+                    urls_to_visit.append(clean_url)
 
             # 2. Extract Text 
             for tag in soup.find_all(['table', 'ul', 'ol', 'script', 'style']):
@@ -108,13 +114,15 @@ def crawl_and_scrape(session, base_url, fallback_url, container_tag, container_a
                         
                     # Now the language check uses positive identification
                     if requires_lang_check and not is_hiligaynon(text):
-                        print(f"  [Filtered Out] {text[:60]}...")
+                        # print(f"  [Filtered Out] {text[:60]}...")
                         continue
 
                     doc = nlp(text)
                     for sent in doc.sents:
                         clean_sent = sent.text.strip()
-                        if len(clean_sent) > 20 and clean_sent not in sentences_collected: 
+                        # Optimized duplicate check using seen_sentences set
+                        if len(clean_sent) > 20 and clean_sent not in seen_sentences: 
+                            seen_sentences.add(clean_sent)
                             sentences_collected.append(clean_sent)
                             if len(sentences_collected) >= max_sentences:
                                 return sentences_collected
@@ -138,7 +146,7 @@ def main():
             "tag": "div",
             "attr": "class",
             "val": "entry-content",
-            "lang_check": True, # Turned on for all sources now to be safe
+            "lang_check": True, 
             "max": 4000
         },
         {
