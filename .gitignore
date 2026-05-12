@@ -1,2 +1,5 @@
 .github/
 project_phases_pctf.md
+/data
+.venv/
+venv/

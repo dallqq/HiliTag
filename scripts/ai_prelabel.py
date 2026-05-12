@@ -1,3 +1,4 @@
+print("Script started! Importing libraries...")
 import json
 import os
 from gliner import GLiNER
