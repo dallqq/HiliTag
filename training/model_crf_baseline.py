@@ -1,4 +1,7 @@
+import os
+import joblib
 import sklearn_crfsuite
+from sklearn_crfsuite import metrics
 
 def word2features(sent, i):
     """
@@ -78,31 +81,82 @@ def build_crf_model():
     )
     return crf
 
-if __name__ == "__main__":
-    # Mock data formatted similarly to parsed CoNLL
-    sample_sent = [
-        ("Si", "O"),
-        ("Mayor", "O"),
-        ("Jerry", "B-PERSON"),
-        ("Treñas", "E-PERSON"),
-        ("nag-kadto", "O"),
-        ("sa", "O"),
-        ("Iloilo", "B-GPE"),
-        ("City", "E-GPE"),
-        (".", "O")
-    ]
-    
-    print("Testing Feature Extraction on sample sequence...")
-    features = sent2features(sample_sent)
-    labels = sent2labels(sample_sent)
-    
-    print(f"\nExtracted Feature Dictionary for the token 'Jerry' ({labels[2]}):")
-    for feature_name, feature_val in features[2].items():
-        print(f"  {feature_name}: {feature_val}")
+def load_conll_data(file_path):
+    """Loads CoNLL format into lists of sentence tuples: [[(token1, tag1), (token2, tag2), ...], ...]"""
+    if not os.path.exists(file_path):
+        print(f"Warning: File not found: {file_path}")
+        return []
         
-    print("\nInitializing CRF Baseline Model Architecture...")
-    crf_model = build_crf_model()
+    sentences = []
+    current_sent = []
     
-    print(f"Algorithm: {crf_model.algorithm}")
-    print(f"Transitions parameter configured: {crf_model.all_possible_transitions}")
-    print("CRF Baseline successfully built and ready for training!")
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("-DOCSTART-") or line == "" or line == "\n":
+                if current_sent:
+                    sentences.append(current_sent)
+                    current_sent = []
+            else:
+                splits = line.strip().split("\t")
+                if len(splits) >= 2:
+                    current_sent.append((splits[0], splits[1]))
+        if current_sent:
+            sentences.append(current_sent)
+            
+    return sentences
+
+if __name__ == "__main__":
+    print("--- CRF Baseline Training Pipeline ---")
+    
+    # 1. Load Data
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    train_file = os.path.join(project_root, 'data', 'final_train.conll')
+    test_file = os.path.join(project_root, 'data', 'final_test_gold.conll')
+    
+    train_sents = load_conll_data(train_file)
+    test_sents = load_conll_data(test_file)
+    
+    if not train_sents:
+        print(f"Please ensure your {train_file} is populated before training.")
+        exit()
+        
+    print(f"Loaded {len(train_sents)} training sentences.")
+    print(f"Loaded {len(test_sents)} testing sentences.")
+    
+    # 2. Extract Features
+    print("\nExtracting handcrafted features...")
+    X_train = [sent2features(s) for s in train_sents]
+    y_train = [sent2labels(s) for s in train_sents]
+    
+    X_test = [sent2features(s) for s in test_sents]
+    y_test = [sent2labels(s) for s in test_sents]
+    
+    # 3. Train Model
+    print("\nInitializing and training CRF model (L-BFGS optimization)...")
+    crf_model = build_crf_model()
+    crf_model.verbose = True # Turn on verbosity for training logs
+    crf_model.fit(X_train, y_train)
+    
+    # 4. Evaluation
+    if X_test:
+        print("\nEvaluating on Gold Standard Test Set...")
+        y_pred = crf_model.predict(X_test)
+        
+        # Remove 'O' tags from metrics to get true NER performance
+        labels = list(crf_model.classes_)
+        if 'O' in labels:
+            labels.remove('O')
+            
+        f1 = metrics.flat_f1_score(y_test, y_pred, average='weighted', labels=labels)
+        print(f"CRF Baseline F1-Score (Weighted excluding 'O'): {f1:.4f}")
+        
+        print("\nDetailed Classification Report:")
+        print(metrics.flat_classification_report(y_test, y_pred, labels=labels, digits=3))
+        
+    # 5. Save Model Context
+    checkpoints_dir = os.path.join(project_root, 'training', 'checkpoints')
+    os.makedirs(checkpoints_dir, exist_ok=True)
+    save_path = os.path.join(checkpoints_dir, 'crf_baseline_model.joblib')
+    
+    joblib.dump(crf_model, save_path)
+    print(f"\nTraining Complete. Model saved to: {save_path}")
