@@ -12,7 +12,7 @@ ONTONOTES_CATEGORIES = [
 ]
 
 def main():
-    input_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'raw_sentences.txt')
+    input_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'clean_sentences.txt')
     output_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'dataset_silver_for_labelstudio.json')
     
     if not os.path.exists(input_path):
