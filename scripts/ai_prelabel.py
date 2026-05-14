@@ -1,4 +1,3 @@
-print("Script started! Importing libraries...")
 import json
 import os
 import torch
@@ -14,7 +13,7 @@ ONTONOTES_CATEGORIES = [
 
 def main():
     input_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'raw_sentences.txt')
-    output_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'dataset_silver_standard.json')
+    output_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'dataset_silver_for_labelstudio.json')
     
     if not os.path.exists(input_path):
         print(f"Input file not found: {input_path}")
@@ -25,7 +24,8 @@ def main():
     print(f"Loading GLiNER Multilingual model on {device.upper()}...")
     
     # Load GLiNER Multilingual model
-    model = GLiNER.from_pretrained("urchade/gliner_multi-v2.1").to(device)
+    model_version = "gliner_multi-v2.1"
+    model = GLiNER.from_pretrained(f"urchade/{model_version}").to(device)
 
     # Load raw sentences
     with open(input_path, 'r', encoding='utf-8') as f:
@@ -45,21 +45,31 @@ def main():
             # Predict one sentence at a time
             preds = model.predict_entities(sentence, ONTONOTES_CATEGORIES, threshold=confidence_threshold)
             
-            formatted_entities = []
+            # Format predictions directly into Label Studio format
+            ls_results = []
             for ent in preds:
-                formatted_entities.append({
-                    "text": ent["text"],
-                    "label": ent["label"],
-                    "start": ent["start"],
-                    "end": ent["end"],
+                ls_results.append({
+                    "from_name": "label",   # Must match <Labels name="label"> in Label Studio template
+                    "to_name": "text",      # Must match <Labels toName="text"> in Label Studio template
+                    "type": "labels",
+                    "value": {
+                        "start": ent["start"],
+                        "end": ent["end"],
+                        "text": ent["text"],
+                        "labels": [ent["label"]]
+                    },
                     "score": round(ent["score"], 4)
                 })
             
-            # Construct the single dictionary entry
-            entry = {
-                "id": i,
-                "text": sentence,
-                "entities": formatted_entities
+            # Construct the base structure for Label Studio
+            ls_item = {
+                "data": {
+                    "text": sentence
+                },
+                "predictions": [{
+                    "model_version": model_version,
+                    "result": ls_results
+                }]
             }
             
             # Add a comma between objects, but not before the first one
@@ -68,7 +78,7 @@ def main():
             first_entry = False
             
             # Dump this single entry to a string, indent it properly, and write to file
-            json_str = json.dumps(entry, ensure_ascii=False, indent=2)
+            json_str = json.dumps(ls_item, ensure_ascii=False, indent=2)
             indented_json = '\n'.join(['  ' + line for line in json_str.split('\n')])
             f.write(indented_json)
             
@@ -76,13 +86,13 @@ def main():
             f.flush()
             
             # Terminal Updates: Print what was found without breaking the progress bar
-            if formatted_entities:
-                found_summary = ", ".join([f"'{e['text']}' ({e['label']})" for e in formatted_entities])
+            if preds:
+                found_summary = ", ".join([f"'{e['text']}' ({e['label']})" for e in preds])
                 tqdm.write(f"✓ ID {i} Found: {found_summary}")
                 
         f.write("\n]\n") # Close the JSON array properly at the very end
 
-    print(f"\nSuccessfully generated incremental silver standard data at {output_path}")
+    print(f"\nSuccessfully generated incremental Label Studio data at {output_path}")
 
 if __name__ == "__main__":
     main()
