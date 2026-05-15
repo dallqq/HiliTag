@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { getSavedDocuments, deleteSavedDocument, updateSavedDocument, type SavedDoc } from "@/lib/storage";
 import { NERHighlighter } from "./NERHighlighter";
 import { EntityTable } from "./EntityTable";
@@ -8,10 +8,22 @@ import { EntityTable } from "./EntityTable";
 export function SavedDocuments({ onEditAnalyze }: { onEditAnalyze: (text: string) => void }) {
   const [docs, setDocs] = useState<SavedDoc[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   
   useEffect(() => {
     setDocs(getSavedDocuments());
   }, []);
+
+  const filteredDocs = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return docs;
+    return docs.filter((d) => {
+      if (d.title.toLowerCase().includes(q)) return true;
+      if (d.text.toLowerCase().includes(q)) return true;
+      if (d.entities.some((e) => e.text.toLowerCase().includes(q) || e.entity_type.toLowerCase().includes(q))) return true;
+      return false;
+    });
+  }, [docs, searchTerm]);
 
   const selectedDoc = docs.find((d) => d.id === selectedId);
 
@@ -34,11 +46,33 @@ export function SavedDocuments({ onEditAnalyze }: { onEditAnalyze: (text: string
       {/* Sidebar List */}
       <div className="w-[300px] flex-shrink-0 border-r border-[rgba(139,69,19,0.15)] bg-paper-warm p-4 overflow-y-auto">
         <h2 className="mb-4 font-lora text-[15px] font-semibold text-ink">Saved Documents</h2>
-        {docs.length === 0 ? (
-          <p className="text-[13px] text-ink-muted">No documents saved yet.</p>
+        <div className="mb-3">
+          <label htmlFor="saved-search" className="sr-only">Search saved documents</label>
+          <div className="relative">
+            <input
+              id="saved-search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search title, text or entities..."
+              className="w-full rounded-md border border-[rgba(139,69,19,0.1)] bg-white px-3 py-2 text-[13px] text-ink focus:outline-none focus:ring-2 focus:ring-accent/30"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
+        {filteredDocs.length === 0 ? (
+          <p className="text-[13px] text-ink-muted">No documents match your search.</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {docs.map((doc) => (
+            {filteredDocs.map((doc) => (
               <div 
                 key={doc.id}
                 onClick={() => setSelectedId(doc.id)}
