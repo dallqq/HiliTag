@@ -78,29 +78,33 @@ def predict():
             # Convert float32 scores to float for proper JSON serialization
             formatted_results = []
             for entity in ner_results:
+                e_type = entity.get("entity_group", "ORG")
                 formatted_results.append({
-                    "entity_group": entity.get("entity_group", ""),
-                    "score": float(entity.get("score", 0.0)),
-                    "word": entity.get("word", ""),
+                    "entity_type": e_type,
+                    "label": e_type,
+                    "confidence": float(entity.get("score", 0.0)),
+                    "text": entity.get("word", ""),
                     "start": int(entity.get("start", 0)),
                     "end": int(entity.get("end", 0))
                 })
         else:
             # Fallback/Mock response if model is MIA
             formatted_results = [
-                {"entity_group": "ORG", "word": "Mock-Org", "start": 0, "end": 8, "score": 0.99}
+                {"entity_type": "ORG", "label": "ORG", "text": "Mock-Org", "start": 0, "end": 8, "confidence": 0.99}
             ]
             
         log_prediction(text, formatted_results)
         return jsonify({
-            "text": text,
+            "status": "success",
+            "model": "xlm-roberta-base",
+            "language": "hil",
             "entities": formatted_results
         }), 200
         
     except Exception as e:
         logger.error(f"Inference error: {str(e)}")
         log_prediction(text, [], status="failed", error=str(e))
-        return jsonify({"error": "An error occurred during inference", "details": str(e)}), 500
+        return jsonify({"status": "error", "error": "An error occurred during inference", "details": str(e)}), 500
 
 @app.route('/health', methods=['GET'])
 def health():
