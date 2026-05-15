@@ -3,18 +3,21 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-type NavTab = "analyze" | "batch" | "model" | "docs";
+type NavTab = "analyze" | "saved" | "model" | "docs";
 
 const NAV_ITEMS: { id: NavTab; label: string }[] = [
   { id: "analyze", label: "Analyze" },
-  { id: "batch", label: "Batch" },
+  { id: "saved", label: "Saved Docs" },
   { id: "model", label: "Model Info" },
   { id: "docs", label: "Docs" },
 ];
 
-export function Header() {
-  const [active, setActive] = useState<NavTab>("analyze");
+interface HeaderProps {
+  activeTab?: NavTab;
+  onTabChange?: (tab: NavTab) => void;
+}
 
+export function Header({ activeTab = "analyze", onTabChange }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 flex h-[58px] items-center justify-between border-b border-[rgba(139,69,19,0.25)] bg-paper px-8">
       {/* Logo */}
@@ -37,10 +40,10 @@ export function Header() {
         {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
-            onClick={() => setActive(item.id)}
+            onClick={() => onTabChange?.(item.id)}
             className={cn(
               "rounded-full px-[14px] py-[5px] text-[13px] transition-all",
-              active === item.id
+              activeTab === item.id
                 ? "bg-accent font-medium text-white"
                 : "text-ink-muted hover:bg-paper-warm hover:text-ink"
             )}

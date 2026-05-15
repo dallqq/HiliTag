@@ -6,6 +6,7 @@ import { NERHighlighter } from "./NERHighlighter";
 import { EntityTable } from "./EntityTable";
 import { JsonOutput } from "./JsonOutput";
 import type { NEREntity, PredictResponse } from "@/types/ner";
+import { saveDocumentLocally } from "@/lib/storage";
 
 type Tab = "annotated" | "table" | "json";
 
@@ -29,6 +30,21 @@ export function ResultsPanel({
   isLoading,
 }: ResultsPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("annotated");
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = () => {
+    if (!text) return;
+    const titlePrompt = prompt("Enter a title for this document:", `Analyzed Doc - ${new Date().toLocaleTimeString()}`);
+    if (titlePrompt !== null) {
+      saveDocumentLocally({
+        title: titlePrompt || "Untitled Document",
+        text,
+        entities
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -79,12 +95,21 @@ export function ResultsPanel({
             {tab.label}
           </button>
         ))}
-        <div className="ml-auto flex items-center pb-2 text-[12px] text-ink-faint">
+        <div className="ml-auto flex items-center gap-4 pb-2 text-[12px]">
           {entities.length > 0 && (
-            <span>
+            <span className="text-ink-faint">
               {entities.length} entit{entities.length === 1 ? "y" : "ies"}{" "}
               found
             </span>
+          )}
+          {text && (
+            <button
+              onClick={handleSave}
+              disabled={saved}
+              className="rounded bg-accent/10 px-3 py-1 font-medium text-accent transition-colors hover:bg-accent/20 disabled:opacity-50"
+            >
+              {saved ? "Saved!" : "Save Document"}
+            </button>
           )}
         </div>
       </div>
