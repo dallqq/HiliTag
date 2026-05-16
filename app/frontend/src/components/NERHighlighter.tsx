@@ -188,6 +188,16 @@ export function NERHighlighter({ text, entities, onEntitiesChange }: NERHighligh
       setDragState({ resolvedIndex, side });
     };
 
+  const handleRemoveEntity = (resolvedIndex: number) =>
+    (event: import("react").MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const targetSpan = resolvedSpans[resolvedIndex];
+      if (!targetSpan || !onEntitiesChange) return;
+
+      onEntitiesChange(entities.filter((_, index) => index !== targetSpan.originalIndex));
+    };
+
   return (
     <div
       ref={containerRef}
@@ -220,7 +230,7 @@ export function NERHighlighter({ text, entities, onEntitiesChange }: NERHighligh
           return (
             <span
               key={i}
-              className="entity-highlight"
+              className="entity-highlight group"
               data-draggable={Boolean(onEntitiesChange)}
               data-dragging={isDragging}
               style={{
@@ -245,6 +255,15 @@ export function NERHighlighter({ text, entities, onEntitiesChange }: NERHighligh
                     onPointerDown={handleDragStart(seg.resolvedIndex, "end")}
                     aria-label={`Resize end of ${seg.entity.entity_type}`}
                   />
+                  <button
+                    type="button"
+                    className="entity-remove-btn"
+                    onClick={handleRemoveEntity(seg.resolvedIndex)}
+                    aria-label={`Remove ${seg.entity.entity_type} label`}
+                    title="Remove label"
+                  >
+                    ×
+                  </button>
                 </>
               )}
               <span

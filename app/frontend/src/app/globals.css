@@ -94,6 +94,35 @@
     right: -3px;
     cursor: ew-resize;
   }
+  .entity-remove-btn {
+    position: absolute;
+    top: -9px;
+    right: -9px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    color: inherit;
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.95);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  .entity-highlight:hover .entity-remove-btn,
+  .entity-highlight[data-dragging="true"] .entity-remove-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .entity-remove-btn:hover {
+    transform: scale(1);
+  }
   .entity-label-sup {
     position: absolute;
     top: -0.62em;

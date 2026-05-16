@@ -1,4 +1,5 @@
 import type { NEREntity } from "@/types/ner";
+import { PANAY_NEWS_SAMPLE_TEXT } from "@/lib/entityConfig";
 
 export interface SavedDoc {
   id: string;
@@ -6,6 +7,113 @@ export interface SavedDoc {
   text: string;
   entities: NEREntity[];
   createdAt: number;
+}
+
+export const SAVED_DOCS_KEY = "hilitag_saved_docs";
+export const SAVED_DOCS_UPDATED_EVENT = "hilitag_saved_docs_updated";
+
+const DEFAULT_SAVED_DOCS: SavedDoc[] = [
+  {
+    id: "sample-panay-news-1",
+    title: "Panay News — Sample",
+    text: PANAY_NEWS_SAMPLE_TEXT,
+    entities: [],
+    createdAt: Date.UTC(2026, 4, 16, 8, 0, 0),
+  },
+  {
+    id: "sample-dummy-test-1",
+    title: "Dummy Test Document",
+    text: "Maria Santos visited Iloilo City on Monday. She met with the team at HiliTag Labs. The group discussed a new model at the Provincial Capitol. Later, they sent a report to the Department of Public Works and Highways. By evening, everyone had dinner at SM City Iloilo.",
+    entities: [
+      {
+        text: "Maria Santos",
+        entity_type: "PERSON",
+        label: "Person",
+        confidence: 1,
+        start: 0,
+        end: 12,
+      },
+      {
+        text: "Iloilo City",
+        entity_type: "GPE",
+        label: "Geopolitical",
+        confidence: 1,
+        start: 21,
+        end: 32,
+      },
+      {
+        text: "Monday",
+        entity_type: "DATE",
+        label: "Date",
+        confidence: 1,
+        start: 36,
+        end: 42,
+      },
+      {
+        text: "HiliTag Labs",
+        entity_type: "ORG",
+        label: "Organization",
+        confidence: 1,
+        start: 69,
+        end: 81,
+      },
+      {
+        text: "Provincial Capitol",
+        entity_type: "FAC",
+        label: "Facility",
+        confidence: 1,
+        start: 122,
+        end: 140,
+      },
+      {
+        text: "Department of Public Works and Highways",
+        entity_type: "ORG",
+        label: "Organization",
+        confidence: 1,
+        start: 175,
+        end: 214,
+      },
+      {
+        text: "SM City Iloilo",
+        entity_type: "FAC",
+        label: "Facility",
+        confidence: 1,
+        start: 251,
+        end: 265,
+      },
+    ],
+    createdAt: Date.UTC(2026, 4, 16, 8, 5, 0),
+  },
+];
+
+function mergeDefaultSavedDocs(docs: SavedDoc[]) {
+  const existingIds = new Set(docs.map((doc) => doc.id));
+  const missingDefaults = DEFAULT_SAVED_DOCS.filter((doc) => !existingIds.has(doc.id));
+  return [...missingDefaults, ...docs];
+}
+
+function persistSavedDocuments(docs: SavedDoc[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SAVED_DOCS_KEY, JSON.stringify(docs));
+  window.dispatchEvent(new Event(SAVED_DOCS_UPDATED_EVENT));
+}
+
+function normalizeSavedDocuments(docs: SavedDoc[]) {
+  return docs.map((doc) => {
+    const isPanaySample =
+      doc.id === "sample-panay-news-1" ||
+      doc.title.toLowerCase().includes("panay news") ||
+      doc.text.includes("Arthur Defensor Jr.");
+
+    if (!isPanaySample) return doc;
+
+    return {
+      ...doc,
+      title: "Panay News — Sample",
+      text: PANAY_NEWS_SAMPLE_TEXT,
+      entities: [],
+    };
+  });
 }
 
 export function saveDocumentLocally(doc: Omit<SavedDoc, "id" | "createdAt">): SavedDoc {
@@ -16,18 +124,30 @@ export function saveDocumentLocally(doc: Omit<SavedDoc, "id" | "createdAt">): Sa
     createdAt: Date.now(),
   };
   docs.push(newDoc);
-  localStorage.setItem("hilitag_saved_docs", JSON.stringify(docs));
+  persistSavedDocuments(docs);
   return newDoc;
 }
 
 export function getSavedDocuments(): SavedDoc[] {
   if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem("hilitag_saved_docs");
-  if (!stored) return [];
+  const stored = localStorage.getItem(SAVED_DOCS_KEY);
+  if (!stored) {
+    persistSavedDocuments(DEFAULT_SAVED_DOCS);
+    return DEFAULT_SAVED_DOCS;
+  }
   try {
-    return JSON.parse(stored);
+    const docs = JSON.parse(stored) as SavedDoc[];
+    const migratedDocs = normalizeSavedDocuments(docs);
+    const mergedDocs = mergeDefaultSavedDocs(migratedDocs);
+
+    if (mergedDocs.length !== docs.length || mergedDocs.some((doc, index) => doc !== docs[index])) {
+      persistSavedDocuments(mergedDocs);
+    }
+
+    return mergedDocs;
   } catch {
-    return [];
+    persistSavedDocuments(DEFAULT_SAVED_DOCS);
+    return DEFAULT_SAVED_DOCS;
   }
 }
 
@@ -36,11 +156,11 @@ export function updateSavedDocument(id: string, updates: Partial<SavedDoc>) {
   const index = docs.findIndex((d) => d.id === id);
   if (index > -1) {
     docs[index] = { ...docs[index], ...updates };
-    localStorage.setItem("hilitag_saved_docs", JSON.stringify(docs));
+    persistSavedDocuments(docs);
   }
 }
 
 export function deleteSavedDocument(id: string) {
   const docs = getSavedDocuments();
-  localStorage.setItem("hilitag_saved_docs", JSON.stringify(docs.filter((d) => d.id !== id)));
+  persistSavedDocuments(docs.filter((d) => d.id !== id));
 }

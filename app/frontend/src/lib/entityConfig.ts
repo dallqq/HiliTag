@@ -1,5 +1,13 @@
 import type { EntityType, EntityConfig } from "@/types/ner";
 
+export const PANAY_NEWS_SAMPLE_TEXT = `Sa bag-o nga report sang Panay News, ginpahibalo ni Governor Arthur Defensor Jr. nga ginpadayon sang probinsya ang pag-upgrade sang mga dalan kag public spaces sa Iloilo City kag sa palibot sang Provincial Capitol. Suno sa iya, ang proyekto indi lang para sa hitsura sang syudad kundi para man sa kaluwasan sang mga motorista, estudyante, kag mga empleyado nga nagakadto adlaw-adlaw sa sentro.
+
+Sa briefing nga ginhiwat sa Capitol building, ginpahayag man sang mga opisyal sang Department of Public Works and Highways nga may dugang nga pondo para sa drainage, sidewalk repair, kag street lighting sa mga vital nga karsada lapit sa SM City Iloilo, Barangay San Rafael, kag Barangay Balantang. Nagreport sila nga ang coordinated works sa Iloilo City kag sa mga katupad nga banwa sa Panay nagakadugang paagi sa mas hapos nga dalagan sang negosyo kag emergency response.
+
+Ginsiling ni Mayor Jerry Treñas nga ang syudad magapadayon sa coordination sa mga opisina sang probinsya agud malikawan ang pag-overlap sang excavation kag road clearing schedules. Gin-engganyo niya man ang mga komunidad nga mag-upod sa impormasyon drive sang lokal nga gobyerno, bangud ang mas maayo nga traffic flow kag mas limpyo nga drainage system makatabang sa mga pumuluyo sang siyudad, turista, kag mga negosyante nga nagasalig sa adlaw-adlaw nga lihok sang ekonomiya.
+
+Sa ginpaguwa nga statement sang Panay News, gin-unong man ang reports nga ang mga proyekto sa riverfront area kag mga pedestrian zone sa Iloilo City mahimo magbukas sang mas madamo nga oportunidad para sa local vendors, cultural events, kag weekend activities. Suno sa mga residente, ang mas malinong nga palibot sa city proper nagahatag sang maayo nga signal nga ang development sa Panay ginatutukan na gid sa mas long-term kag mas coordinated nga plano.`;
+
 export const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
   PERSON: {
     label: "Person",
@@ -132,7 +140,7 @@ export const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
 export const SAMPLE_TEXTS = [
   {
     label: "News",
-    text: `Si Gobernador Arthur Defensor Jr. nagpahayag sang iya suporta sa bag-o nga ordinansa sang Lalawigan sang Iloilo. Gin-liwat niya nga ang Provincial Capitol sa Iloilo City nagahanda na para sa ika-120 anibersaryo sang pagtukod sang probinsya sang Setyembre 2026.`,
+    text: PANAY_NEWS_SAMPLE_TEXT,
   },
   {
     label: "History",
