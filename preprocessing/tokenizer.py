@@ -6,25 +6,36 @@ def get_hiligaynon_nlp():
     """
     Initializes a custom spaCy tokenizer suited for the Hiligaynon language.
     Context: Hiligaynon relies heavily on affixes (e.g., nag-, gin-, mag-).
-    This tokenizer prevents splitting on hyphens within words to preserve 
-    the morphological and syntactic structure required for transformer models.
+    This tokenizer prevents splitting on hyphens within alphabetical words 
+    to preserve the morphological and syntactic structure, while maintaining
+    standard punctuation handling.
     """
-    # Initialize a multi-language blank pipeline as required
+    # Initialize a multi-language blank pipeline
     nlp = spacy.blank("xx")
     
-    # Retrieve default prefix and suffix rules (handles standard punctuation like commas, periods)
+    # Retrieve default prefix and suffix rules
     prefixes = nlp.Defaults.prefixes
     suffixes = nlp.Defaults.suffixes
     
-    # Filter out infix patterns that contain hyphens to prevent splitting words like 'nag-kaon'
-    infixes = tuple(pattern for pattern in nlp.Defaults.infixes if "-" not in pattern)
+    # Retrieve default infixes
+    base_infixes = nlp.Defaults.infixes
+    
+    # Safely filter out the specific rule that splits on hyphens between letters.
+    # We avoid `if "-" not in pattern` because it destroys regex ranges like [a-z].
+    # Instead, we filter out common hyphen characters natively defined in spaCy's infixes.
+    custom_infixes = []
+    for pattern in base_infixes:
+        # Check if the pattern specifically looks for hyphen/dash characters between alphabetic characters
+        if r"(?<=[{al}])(?:[{h}])(?=[{al}])" in pattern or pattern == r"(?<=[a-zA-Z])-(?=[a-zA-Z])":
+            continue
+        custom_infixes.append(pattern)
     
     # Rebuild the tokenizer with the modified infix rules
     nlp.tokenizer = Tokenizer(
         nlp.vocab,
         prefix_search=compile_prefix_regex(prefixes).search,
         suffix_search=compile_suffix_regex(suffixes).search,
-        infix_finditer=compile_infix_regex(infixes).finditer,
+        infix_finditer=compile_infix_regex(tuple(custom_infixes)).finditer,
         token_match=nlp.tokenizer.token_match
     )
     
@@ -34,15 +45,21 @@ if __name__ == "__main__":
     # Quick sanity check for the tokenization engine
     nlp = get_hiligaynon_nlp()
     
-    sample_text = "Ang mga bata nag-hampang sa plasa, kag gin-ubos gid nila ang panyapon."
+    sample_text = "Ang mga bata nag-hampang sa plasa, kag gin-ubos gid nila ang panyapon halin 2023-2024."
     doc = nlp(sample_text)
     
     print("Original Text:", sample_text)
-    print("Tokens:", [token.text for token in doc])
+    
+    # Extract tokens as a list of strings
+    tokens = [token.text for token in doc]
+    print("Tokens:", tokens)
     
     # Ensure that "nag-hampang", "gin-ubos", and punctuation are handled correctly
-    assert "nag-hampang" in [t.text for t in doc], "Failed: 'nag-hampang' was split."
-    assert "gin-ubos" in [t.text for t in doc], "Failed: 'gin-ubos' was split."
-    assert "," in [t.text for t in doc], "Failed: Punctuation was not split correctly."
+    assert "nag-hampang" in tokens, "Failed: 'nag-hampang' was unexpectedly split."
+    assert "gin-ubos" in tokens, "Failed: 'gin-ubos' was unexpectedly split."
+    assert "," in tokens, "Failed: Punctuation was not split correctly."
     
-    print("Tokenization test passed successfully!")
+    # Note: Depending on your downstream NER needs, you may or may not want "2023-2024" to split. 
+    # The refined regex logic above allows you to tune that independently of alphabetical words.
+    
+    print("\nTokenization test passed successfully!")
