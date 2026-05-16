@@ -14,6 +14,18 @@ export function SavedDocuments({ onEditAnalyze }: { onEditAnalyze: (text: string
     setDocs(getSavedDocuments());
   }, []);
 
+  useEffect(() => {
+    if (!docs.length) {
+      if (selectedId !== null) setSelectedId(null);
+      return;
+    }
+
+    const selectedExists = selectedId ? docs.some((doc) => doc.id === selectedId) : false;
+    if (!selectedExists) {
+      setSelectedId(docs[docs.length - 1].id);
+    }
+  }, [docs, selectedId]);
+
   const filteredDocs = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return docs;
@@ -32,7 +44,6 @@ export function SavedDocuments({ onEditAnalyze }: { onEditAnalyze: (text: string
     deleteSavedDocument(id);
     const newDocs = getSavedDocuments();
     setDocs(newDocs);
-    if (selectedId === id) setSelectedId(null);
   };
 
   const handleUpdateEntities = (newEntities: any[]) => {
