@@ -10,9 +10,13 @@ from preprocessing.tokenizer import get_hiligaynon_nlp
 def align_tokens_to_bioes(text: str, entities: List[Dict[str, Any]], nlp) -> List[Tuple[str, str]]:
     """
     Aligns Label Studio character-level offsets to token-level BIOES tags.
+    Assumes `nlp` returns an object with tokens containing `.text`, `.idx`, and `.i`.
     """
     doc = nlp(text)
-    tokens_bioes = []
+    
+    # Initialize all tokens with 'O' (Outside) by default
+    # This prevents the need to continuously append to a list inside loops
+    tags = ["O"] * len(doc)
     
     # Sort entities by start offset to process sequentially
     entities = sorted(entities, key=lambda x: x['start'])
@@ -27,48 +31,33 @@ def align_tokens_to_bioes(text: str, entities: List[Dict[str, Any]], nlp) -> Lis
         else:
             print(f"Warning: Discarding conflicting overlapping entity bounds starting at {ent['start']}")
 
-    for token in doc:
-        token_start = token.idx
-        token_end = token_start + len(token.text)
-        
-        # Search if this token falls within any valid entity boundary
-        matched_ent = None
-        for ent in valid_entities:
-            # Token falls completely inside the entity offset
-            if token_start >= ent['start'] and token_end <= ent['end']:
-                matched_ent = ent
-                break
-            # Token partially overlaps (malformed or misaligned tokenizer vs annotation)
-            elif token_start < ent['end'] and token_end > ent['start']:
-                # Discard conflicting partial bounds gracefully
-                break
-        
-        if not matched_ent:
-            tokens_bioes.append((token.text, "O"))
-            continue
-            
+    for ent in valid_entities:
         # Safely extract the label
-        label = matched_ent['labels'][0] if isinstance(matched_ent['labels'], list) else matched_ent['labels']
+        label = ent['labels'][0] if isinstance(ent['labels'], list) else ent['labels']
         
-        # Determine strict BIOES sequence positions
-        ent_tokens = [t for t in doc if t.idx >= matched_ent['start'] and (t.idx + len(t.text)) <= matched_ent['end']]
+        # Find tokens that fall within the entity boundary.
+        # Note: Depending on tokenizer strictness, you may want to loosen these bounds
+        # if annotators accidentally include leading/trailing spaces in Label Studio.
+        ent_tokens = [
+            t for t in doc 
+            if t.idx >= ent['start'] and (t.idx + len(t.text)) <= ent['end']
+        ]
         
         if not ent_tokens:
-            tokens_bioes.append((token.text, "O"))
             continue
             
+        # Apply BIOES tagging strictly to the indices found
         if len(ent_tokens) == 1:
-            tag = f"S-{label}"
-        elif token.i == ent_tokens[0].i:
-            tag = f"B-{label}"
-        elif token.i == ent_tokens[-1].i:
-            tag = f"E-{label}"
+            tags[ent_tokens[0].i] = f"S-{label}"
         else:
-            tag = f"I-{label}"
-            
-        tokens_bioes.append((token.text, tag))
-        
-    return tokens_bioes
+            tags[ent_tokens[0].i] = f"B-{label}"
+            tags[ent_tokens[-1].i] = f"E-{label}"
+            # Tag all intermediate tokens as 'Inside'
+            for t in ent_tokens[1:-1]:
+                tags[t.i] = f"I-{label}"
+                
+    # Combine the token text with the calculated tags
+    return [(token.text, tags[token.i]) for token in doc]
 
 def convert_label_studio_to_conll(json_data: List[Dict], output_file: str, nlp):
     """
@@ -122,9 +111,13 @@ if __name__ == "__main__":
         }
     ]
     
+    # Handle the directory safely based on the script's actual execution path
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    train_file = os.path.join(project_root, 'data', 'final_train.conll')
-    test_file = os.path.join(project_root, 'data', 'final_test_gold.conll')
+    data_dir = os.path.join(project_root, 'data')
+    os.makedirs(data_dir, exist_ok=True)
+    
+    train_file = os.path.join(data_dir, 'final_train.conll')
+    test_file = os.path.join(data_dir, 'final_test_gold.conll')
     
     # This acts as our initialization for the empty datasets/generation files
     convert_label_studio_to_conll(sample_data, train_file, nlp)
@@ -134,5 +127,5 @@ if __name__ == "__main__":
         with open(test_file, 'w', encoding='utf-8') as f:
             f.write("")
             
-    print(f"Alignment algorithm compiled.")
+    print("Alignment algorithm compiled.")
     print(f"CoNLL dataset outputs prepared at:\n- {train_file}\n- {test_file}")
