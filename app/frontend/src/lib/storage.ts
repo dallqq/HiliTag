@@ -138,13 +138,11 @@ export function getSavedDocuments(): SavedDoc[] {
   try {
     const docs = JSON.parse(stored) as SavedDoc[];
     const migratedDocs = normalizeSavedDocuments(docs);
-    const mergedDocs = mergeDefaultSavedDocs(migratedDocs);
-
-    if (mergedDocs.length !== docs.length || mergedDocs.some((doc, index) => doc !== docs[index])) {
-      persistSavedDocuments(mergedDocs);
+    if (migratedDocs.some((doc, index) => doc !== docs[index])) {
+      persistSavedDocuments(migratedDocs);
     }
 
-    return mergedDocs;
+    return migratedDocs;
   } catch {
     persistSavedDocuments(DEFAULT_SAVED_DOCS);
     return DEFAULT_SAVED_DOCS;
