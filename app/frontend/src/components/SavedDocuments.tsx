@@ -111,7 +111,11 @@ export function SavedDocuments({ onEditAnalyze }: { onEditAnalyze: (text: string
              <div className="mb-8">
                 <h2 className="mb-3 text-[13px] font-medium uppercase tracking-[0.06em] text-ink-muted">Document Text</h2>
                 <div className="rounded-xl border border-[rgba(139,69,19,0.15)] bg-white p-5 leading-relaxed text-ink shadow-sm">
-                   <NERHighlighter text={selectedDoc.text} entities={selectedDoc.entities} />
+                     <NERHighlighter
+                       text={selectedDoc.text}
+                       entities={selectedDoc.entities}
+                       onEntitiesChange={(newEntities) => handleUpdateEntities(newEntities)}
+                     />
                 </div>
              </div>
              

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { NERHighlighter } from "./NERHighlighter";
 import { EntityTable } from "./EntityTable";
@@ -31,15 +31,24 @@ export function ResultsPanel({
 }: ResultsPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("annotated");
   const [saved, setSaved] = useState(false);
+  const [editableEntities, setEditableEntities] = useState<NEREntity[]>(entities);
+
+  useEffect(() => {
+    setEditableEntities(entities);
+  }, [entities]);
 
   const handleSave = () => {
     if (!text) return;
-    const titlePrompt = prompt("Enter a title for this document:", `Analyzed Doc - ${new Date().toLocaleTimeString()}`);
+    const titlePrompt = prompt(
+      "Enter a title for this document:",
+      `Analyzed Doc - ${new Date().toLocaleTimeString()}`
+    );
+
     if (titlePrompt !== null) {
       saveDocumentLocally({
         title: titlePrompt || "Untitled Document",
         text,
-        entities
+        entities: editableEntities,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -72,9 +81,15 @@ export function ResultsPanel({
     return <EmptyState />;
   }
 
+  const displayedResponse = response
+    ? {
+        ...response,
+        entities: editableEntities,
+      }
+    : null;
+
   return (
     <div>
-      {/* Tabs */}
       <div
         className="mb-6 flex gap-0 border-b border-[rgba(139,69,19,0.15)]"
         role="tablist"
@@ -96,10 +111,9 @@ export function ResultsPanel({
           </button>
         ))}
         <div className="ml-auto flex items-center gap-4 pb-2 text-[12px]">
-          {entities.length > 0 && (
+          {editableEntities.length > 0 && (
             <span className="text-ink-faint">
-              {entities.length} entit{entities.length === 1 ? "y" : "ies"}{" "}
-              found
+              {editableEntities.length} entit{editableEntities.length === 1 ? "y" : "ies"} found
             </span>
           )}
           {text && (
@@ -114,25 +128,30 @@ export function ResultsPanel({
         </div>
       </div>
 
-      {/* Tab panels */}
       {activeTab === "annotated" && (
         <div role="tabpanel" aria-label="Annotated text">
           {text ? (
-            <NERHighlighter text={text} entities={entities} />
+            <NERHighlighter
+              text={text}
+              entities={editableEntities}
+              onEntitiesChange={setEditableEntities}
+            />
           ) : (
             <EmptyState />
           )}
         </div>
       )}
+
       {activeTab === "table" && (
         <div role="tabpanel" aria-label="Entity table">
-          <EntityTable entities={entities} />
+          <EntityTable entities={editableEntities} />
         </div>
       )}
+
       {activeTab === "json" && (
         <div role="tabpanel" aria-label="JSON output">
-          {response ? (
-            <JsonOutput response={response} />
+          {displayedResponse ? (
+            <JsonOutput response={displayedResponse} />
           ) : (
             <p className="text-[13px] text-ink-muted">No data yet.</p>
           )}
@@ -146,7 +165,15 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
       <div className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-accent-light text-accent">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          aria-hidden="true"
+        >
           <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
           <polyline points="14 2 14 8 20 8" />
           <line x1="16" y1="13" x2="8" y2="13" />
@@ -158,8 +185,7 @@ function EmptyState() {
         Ready to analyze
       </h2>
       <p className="max-w-[340px] text-[13px] leading-relaxed text-ink-muted">
-        Enter a Hiligaynon text passage above and click &ldquo;Analyze
-        text&rdquo; to extract named entities using XLM-RoBERTa.
+        Enter a Hiligaynon text passage above and click &ldquo;Analyze text&rdquo; to extract named entities using XLM-RoBERTa.
       </p>
     </div>
   );
