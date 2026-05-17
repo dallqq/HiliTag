@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import glob
 from typing import List, Dict, Any, Tuple
 
 # Ensure python path includes the current directory so we can import the tokenizer
@@ -95,6 +96,31 @@ def convert_label_studio_to_conll(json_data: List[Dict], output_file: str, nlp):
                 f.write(f"{token}\t{tag}\n")
             f.write("\n") # Sentence separator
 
+
+def process_verified_folder(verified_dir: str, out_dir: str, nlp):
+    """
+    Processes all Label Studio JSON files in `verified_dir` and writes
+    CoNLL outputs to `out_dir` (one .conll per input JSON file).
+    """
+    os.makedirs(out_dir, exist_ok=True)
+
+    json_paths = glob.glob(os.path.join(verified_dir, "*.json"))
+    if not json_paths:
+        print(f"No JSON files found in verified folder: {verified_dir}")
+        return
+
+    for path in json_paths:
+        try:
+            with open(path, 'r', encoding='utf-8') as rf:
+                data = json.load(rf)
+
+            base = os.path.splitext(os.path.basename(path))[0]
+            out_file = os.path.join(out_dir, base + '.conll')
+            convert_label_studio_to_conll(data, out_file, nlp)
+            print(f"Converted {path} -> {out_file}")
+        except Exception as e:
+            print(f"Error processing {path}: {e}")
+
 if __name__ == "__main__":
     nlp = get_hiligaynon_nlp()
     
@@ -129,3 +155,11 @@ if __name__ == "__main__":
             
     print("Alignment algorithm compiled.")
     print(f"CoNLL dataset outputs prepared at:\n- {train_file}\n- {test_file}")
+
+    # If a verified split folder exists, process all Label Studio JSONs there
+    verified_dir = os.path.join(project_root, 'data', 'splits', 'verified')
+    out_converted = os.path.join(data_dir, 'converted_verified')
+    if os.path.isdir(verified_dir):
+        process_verified_folder(verified_dir, out_converted, nlp)
+    else:
+        print(f"Verified folder not found at: {verified_dir}")
