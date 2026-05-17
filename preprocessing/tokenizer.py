@@ -1,4 +1,5 @@
 import spacy
+import re
 from spacy.util import compile_prefix_regex, compile_suffix_regex, compile_infix_regex
 from spacy.tokenizer import Tokenizer
 
@@ -19,6 +20,17 @@ def get_hiligaynon_nlp():
     
     # Retrieve default infixes
     base_infixes = nlp.Defaults.infixes
+    base_token_match = nlp.tokenizer.token_match
+
+    # Preserve hyphenated alphabetic forms (e.g., nag-hampang, gin-ubos)
+    hyphenated_alpha_re = re.compile(r"^[^\W\d_]+(?:-[^\W\d_]+)+$", re.UNICODE)
+
+    def custom_token_match(text):
+        if hyphenated_alpha_re.match(text):
+            return True
+        if base_token_match is None:
+            return False
+        return base_token_match(text)
     
     # Safely filter out the specific rule that splits on hyphens between letters.
     # We avoid `if "-" not in pattern` because it destroys regex ranges like [a-z].
@@ -36,7 +48,7 @@ def get_hiligaynon_nlp():
         prefix_search=compile_prefix_regex(prefixes).search,
         suffix_search=compile_suffix_regex(suffixes).search,
         infix_finditer=compile_infix_regex(tuple(custom_infixes)).finditer,
-        token_match=nlp.tokenizer.token_match
+        token_match=custom_token_match
     )
     
     return nlp
