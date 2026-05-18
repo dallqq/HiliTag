@@ -110,26 +110,33 @@ if __name__ == "__main__":
     
     # 1. Load Data
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    train_file = os.path.join(project_root, 'data', 'final_train.conll')
-    test_file = os.path.join(project_root, 'data', 'final_test_gold.conll')
+    train_file = os.path.join(project_root, 'data', 'converted_verified', 'dataset_train_final.conll')
+    val_file = os.path.join(project_root, 'data', 'converted_verified', 'dataset_val_final.conll')
+    test_file = os.path.join(project_root, 'data', 'converted_verified', 'dataset_test_final.conll')
     
     train_sents = load_conll_data(train_file)
+    val_sents = load_conll_data(val_file)
     test_sents = load_conll_data(test_file)
     
     if not train_sents:
         print(f"Please ensure your {train_file} is populated before training.")
         exit()
         
+    # Combine validation and test datasets for testing
+    combined_test_sents = val_sents + test_sents
+    
     print(f"Loaded {len(train_sents)} training sentences.")
+    print(f"Loaded {len(val_sents)} validation sentences.")
     print(f"Loaded {len(test_sents)} testing sentences.")
+    print(f"Combined Testing Set Size (Val + Test): {len(combined_test_sents)} sentences.")
     
     # 2. Extract Features
     print("\nExtracting handcrafted features...")
     X_train = [sent2features(s) for s in train_sents]
     y_train = [sent2labels(s) for s in train_sents]
     
-    X_test = [sent2features(s) for s in test_sents]
-    y_test = [sent2labels(s) for s in test_sents]
+    X_test = [sent2features(s) for s in combined_test_sents]
+    y_test = [sent2labels(s) for s in combined_test_sents]
     
     # 3. Train Model
     print("\nInitializing and training CRF model (L-BFGS optimization)...")
@@ -139,7 +146,7 @@ if __name__ == "__main__":
     
     # 4. Evaluation
     if X_test:
-        print("\nEvaluating on Gold Standard Test Set...")
+        print("\nEvaluating on Combined (Val + Test) Test Set...")
         y_pred = crf_model.predict(X_test)
         
         # Remove 'O' tags from metrics to get true NER performance

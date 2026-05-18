@@ -11,9 +11,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 os.makedirs(os.path.join(os.path.dirname(__file__), '../docs'), exist_ok=True)
 
 # File Paths
-GOLD_DATA_PATH = os.path.join(os.path.dirname(__file__), '../data/final_test_gold.conll')
+CONVERTED_DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/converted_verified')
+TEST_DATA_PATH = os.path.join(CONVERTED_DATA_DIR, 'dataset_test_final.conll')
+TRAIN_DATA_PATH = os.path.join(CONVERTED_DATA_DIR, 'dataset_train_finak.conll')
+VAL_DATA_PATH = os.path.join(CONVERTED_DATA_DIR, 'dataset_val_final.conll')
 XLM_MODEL_PATH = os.path.join(os.path.dirname(__file__), '../training/checkpoints/best_model')
-CRF_MODEL_PATH = os.path.join(os.path.dirname(__file__), '../training/crf_model.joblib')
+CRF_MODEL_PATH = os.path.join(os.path.dirname(__file__), '../training/checkpoints/crf_baseline_model.joblib')
 OUTPUT_METRICS_PATH = os.path.join(os.path.dirname(__file__), '../docs/metrics_output.txt')
 
 def load_conll_data(filepath):
@@ -86,13 +89,17 @@ def evaluate_xlm(sentences, true_labels):
     return report
 
 def main():
-    print("Loading Gold Standard Dataset...")
-    sentences, true_labels = load_conll_data(GOLD_DATA_PATH)
+    print("=== Hiligaynon NER Evaluation Pipeline ===\n")
+    print(f"Loading test split from: {TEST_DATA_PATH}\n")
+    
+    sentences, true_labels = load_conll_data(TEST_DATA_PATH)
     
     metrics_output = []
-    metrics_output.append("=== Hiligaynon NER Strict Entity-Level Metrics ===\n")
+    metrics_output.append("=== Hiligaynon NER Strict Entity-Level Metrics (Test Split) ===\n")
     
     if sentences:
+        print(f"Loaded {len(sentences)} test sentences.\n")
+        
         print("Evaluating CRF Baseline...")
         crf_report = evaluate_crf(sentences, true_labels)
         metrics_output.append("--- CRF Baseline Performance ---")
@@ -105,12 +112,13 @@ def main():
         metrics_output.append(xlmr_report)
     else:
         metrics_output.append("Dataset missing! Unable to generate accurate seqeval metrics.")
+        metrics_output.append(f"Expected location: {TEST_DATA_PATH}")
         
     # Write to output file
     with open(OUTPUT_METRICS_PATH, 'w', encoding='utf-8') as f:
         f.write("\n".join(metrics_output))
         
-    print(f"Evaluation complete. Metrics saved to {OUTPUT_METRICS_PATH}")
+    print(f"\nEvaluation complete. Metrics saved to {OUTPUT_METRICS_PATH}")
 
 if __name__ == '__main__':
     main()
