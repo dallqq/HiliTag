@@ -26,7 +26,7 @@ def word2features(sent, i):
         
         # Basic word shape approximation based on length
         'word.length': len(word),
-        'word.has_hyphen': '-' in word,  # Especially important for Hiligaynon affixes
+        'word.has_hyphen': '-' in word,
     }
     
     # Contextual features: Previous word
@@ -65,22 +65,6 @@ def sent2tokens(sent):
     """Extracts sequence tokens from a tuple array."""
     return [token for token, label in sent]
 
-def build_crf_model():
-    """
-    Initializes the Conditional Random Field (CRF) model using sklearn-crfsuite.
-    Purpose: Establish a classical sequence tagging baseline to contextualize and
-    prove the computational effectiveness of the XLM-R architecture.
-    """
-    crf = sklearn_crfsuite.CRF(
-        algorithm='lbfgs',
-        c1=0.1,  # L1 regularization coefficient
-        c2=0.1,  # L2 regularization coefficient
-        max_iterations=100,
-        all_possible_transitions=True,
-        verbose=False
-    )
-    return crf
-
 def load_conll_data(file_path):
     """Loads CoNLL format into lists of sentence tuples: [[(token1, tag1), (token2, tag2), ...], ...]"""
     if not os.path.exists(file_path):
@@ -106,7 +90,7 @@ def load_conll_data(file_path):
     return sentences
 
 if __name__ == "__main__":
-    print("--- CRF Baseline Training Pipeline ---")
+    print("--- CRF Baseline Training & Tuning Pipeline ---")
     
     # 1. Load Data
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -118,52 +102,85 @@ if __name__ == "__main__":
     val_sents = load_conll_data(val_file)
     test_sents = load_conll_data(test_file)
     
-    if not train_sents:
-        print(f"Please ensure your {train_file} is populated before training.")
+    if not train_sents or not val_sents or not test_sents:
+        print("Error: Ensure train, validation, and test datasets are populated.")
         exit()
         
-    # Combine validation and test datasets for testing
-    combined_test_sents = val_sents + test_sents
-    
     print(f"Loaded {len(train_sents)} training sentences.")
     print(f"Loaded {len(val_sents)} validation sentences.")
     print(f"Loaded {len(test_sents)} testing sentences.")
-    print(f"Combined Testing Set Size (Val + Test): {len(combined_test_sents)} sentences.")
     
     # 2. Extract Features
-    print("\nExtracting handcrafted features...")
+    print("\nExtracting handcrafted features for all splits...")
     X_train = [sent2features(s) for s in train_sents]
     y_train = [sent2labels(s) for s in train_sents]
     
-    X_test = [sent2features(s) for s in combined_test_sents]
-    y_test = [sent2labels(s) for s in combined_test_sents]
+    X_val = [sent2features(s) for s in val_sents]
+    y_val = [sent2labels(s) for s in val_sents]
     
-    # 3. Train Model
-    print("\nInitializing and training CRF model (L-BFGS optimization)...")
-    crf_model = build_crf_model()
-    crf_model.verbose = True # Turn on verbosity for training logs
-    crf_model.fit(X_train, y_train)
+    X_test = [sent2features(s) for s in test_sents]
+    y_test = [sent2labels(s) for s in test_sents]
     
-    # 4. Evaluation
-    if X_test:
-        print("\nEvaluating on Combined (Val + Test) Test Set...")
-        y_pred = crf_model.predict(X_test)
-        
-        # Remove 'O' tags from metrics to get true NER performance
-        labels = list(crf_model.classes_)
-        if 'O' in labels:
-            labels.remove('O')
+    # 3. Hyperparameter Tuning using Validation Set
+    print("\nStarting Hyperparameter Tuning on Validation Set...")
+    
+    # Grid of L1 and L2 regularization parameters to test
+    c1_values = [0.01, 0.1, 1.0]
+    c2_values = [0.01, 0.1, 1.0]
+    
+    best_val_f1 = 0.0
+    best_model = None
+    best_params = {}
+    
+    # Extract unique labels across the training set to exclude 'O' from metrics
+    all_train_labels = set(label for doc in y_train for label in doc)
+    eval_labels = list(all_train_labels)
+    if 'O' in eval_labels:
+        eval_labels.remove('O')
+    
+    for c1 in c1_values:
+        for c2 in c2_values:
+            print(f"  Training CRF with c1={c1}, c2={c2}...")
             
-        f1 = metrics.flat_f1_score(y_test, y_pred, average='weighted', labels=labels)
-        print(f"CRF Baseline F1-Score (Weighted excluding 'O'): {f1:.4f}")
-        
-        print("\nDetailed Classification Report:")
-        print(metrics.flat_classification_report(y_test, y_pred, labels=labels, digits=3))
-        
-    # 5. Save Model Context
+            crf = sklearn_crfsuite.CRF(
+                algorithm='lbfgs',
+                c1=c1,
+                c2=c2,
+                max_iterations=100,
+                all_possible_transitions=True,
+                verbose=False
+            )
+            
+            # Train on 80% Train
+            crf.fit(X_train, y_train)
+            
+            # Evaluate on 10% Validation
+            y_val_pred = crf.predict(X_val)
+            val_f1 = metrics.flat_f1_score(y_val, y_val_pred, average='weighted', labels=eval_labels)
+            
+            print(f"    Validation F1: {val_f1:.4f}")
+            
+            if val_f1 > best_val_f1:
+                best_val_f1 = val_f1
+                best_model = crf
+                best_params = {'c1': c1, 'c2': c2}
+                
+    print(f"\nOptimal Hyperparameters Selected: {best_params} (Validation F1: {best_val_f1:.4f})")
+    
+    # 4. Final Evaluation on Isolated Test Set
+    print("\n--- Final Evaluation on Unseen Test Set ---")
+    y_test_pred = best_model.predict(X_test)
+    
+    final_test_f1 = metrics.flat_f1_score(y_test, y_test_pred, average='weighted', labels=eval_labels)
+    print(f"Champion CRF Final Test F1-Score (Weighted excluding 'O'): {final_test_f1:.4f}")
+    
+    print("\nDetailed Classification Report (Test Set):")
+    print(metrics.flat_classification_report(y_test, y_test_pred, labels=eval_labels, digits=3))
+    
+    # 5. Save Champion Model
     checkpoints_dir = os.path.join(project_root, 'training', 'checkpoints')
     os.makedirs(checkpoints_dir, exist_ok=True)
     save_path = os.path.join(checkpoints_dir, 'crf_baseline_model.joblib')
     
-    joblib.dump(crf_model, save_path)
-    print(f"\nTraining Complete. Model saved to: {save_path}")
+    joblib.dump(best_model, save_path)
+    print(f"\nPipeline Complete. Champion model saved to: {save_path}")
