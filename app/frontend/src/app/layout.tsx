@@ -18,7 +18,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "IlonggoNER — Hiligaynon Named Entity Recognition",
+  title: "HiliTag — Hiligaynon Named Entity Recognition",
   description:
     "Fine-tuned XLM-RoBERTa model for Named Entity Recognition in Hiligaynon. Identifies 18 OntoNotes 5.0 entity categories.",
   keywords: ["Hiligaynon", "NER", "Named Entity Recognition", "XLM-RoBERTa", "NLP", "Ilonggo"],

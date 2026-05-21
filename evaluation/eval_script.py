@@ -1,10 +1,12 @@
 import os
 import sys
+import json
+import tempfile
 import joblib
 import torch
 from tqdm import tqdm
 from seqeval.metrics import classification_report
-from transformers import pipeline, AutoTokenizer, AutoModelForTokenClassification
+from transformers import pipeline, AutoTokenizer, AutoModelForTokenClassification, PreTrainedTokenizerFast
 
 # Add parent dir to sys.path to allow importing from 'training'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -24,6 +26,71 @@ OUTPUT_METRICS_PATH = os.path.join(os.path.dirname(__file__), '../docs/metrics_o
 
 # Allowed entities updated according to your requirements
 VALID_ENTITIES = {"PERSON", "ORG", "LOCATION", "DATETIME", "MONEY", "EVENT", "NORP"}
+
+
+def _strip_unsupported_tokenizer_fields(value):
+    """Recursively remove known cross-version tokenizer fields that can break loading."""
+    if isinstance(value, dict):
+        cleaned = {k: _strip_unsupported_tokenizer_fields(v) for k, v in value.items()}
+        if cleaned.get("type") == "Metaspace":
+            cleaned.pop("split", None)
+        return cleaned
+
+    if isinstance(value, list):
+        return [_strip_unsupported_tokenizer_fields(item) for item in value]
+
+    return value
+
+
+def load_compatible_tokenizer(model_dir):
+    """Load tokenizer from checkpoint with fallback for tokenizers schema drift."""
+    tokenizer_config_path = os.path.join(model_dir, "tokenizer_config.json")
+
+    try:
+        return AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
+    except Exception as exc:
+        print(f"Warning: AutoTokenizer local load failed: {exc}")
+
+    tokenizer_path = os.path.join(model_dir, "tokenizer.json")
+    if os.path.exists(tokenizer_path):
+        try:
+            with open(tokenizer_path, "r", encoding="utf-8") as tokenizer_file:
+                tokenizer_payload = json.load(tokenizer_file)
+
+            cleaned_payload = _strip_unsupported_tokenizer_fields(tokenizer_payload)
+
+            special_tokens = {}
+            if os.path.exists(tokenizer_config_path):
+                with open(tokenizer_config_path, "r", encoding="utf-8") as cfg_file:
+                    tokenizer_cfg = json.load(cfg_file)
+                for key in (
+                    "bos_token",
+                    "eos_token",
+                    "unk_token",
+                    "sep_token",
+                    "cls_token",
+                    "pad_token",
+                    "mask_token",
+                ):
+                    if key in tokenizer_cfg:
+                        special_tokens[key] = tokenizer_cfg[key]
+
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as tmp:
+                json.dump(cleaned_payload, tmp, ensure_ascii=False)
+                sanitized_tokenizer_path = tmp.name
+
+            try:
+                return PreTrainedTokenizerFast(tokenizer_file=sanitized_tokenizer_path, **special_tokens)
+            finally:
+                try:
+                    os.remove(sanitized_tokenizer_path)
+                except OSError:
+                    pass
+        except Exception as exc:
+            print(f"Warning: Sanitized tokenizer load failed: {exc}")
+
+    print("Warning: Falling back to base tokenizer: xlm-roberta-base")
+    return AutoTokenizer.from_pretrained("xlm-roberta-base")
 
 def filter_label(label):
     """
@@ -92,8 +159,8 @@ def evaluate_xlm(sentences, true_labels):
     """Evaluates the XLM-RoBERTa model using seqeval."""
     if not os.path.exists(XLM_MODEL_PATH):
         return "XLM-R Model not found."
-        
-    tokenizer = AutoTokenizer.from_pretrained(XLM_MODEL_PATH)
+
+    tokenizer = load_compatible_tokenizer(XLM_MODEL_PATH)
     model = AutoModelForTokenClassification.from_pretrained(XLM_MODEL_PATH)
     
     device = 0 if torch.cuda.is_available() else -1

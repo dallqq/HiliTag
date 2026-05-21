@@ -13,10 +13,8 @@ export function ModelStrip() {
         xlm-roberta-base
       </span>
       <span>·</span>
-      <span>Fine-tuned for Hiligaynon · 18 OntoNotes categories</span>
+      <span>Fine-tuned for Hiligaynon · 6 OntoNotes categories</span>
       <span className="ml-auto flex items-center gap-1.5">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
-        API ready
       </span>
     </footer>
   );

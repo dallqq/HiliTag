@@ -5,3 +5,6 @@ project_phases_pctf.md
 venv/
 preprocessing/to_bioes_script_compatible.py
 model.safetensors
+docs/
+training/checkpoints/best_model/
+**/best_model/

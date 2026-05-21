@@ -86,7 +86,7 @@ function ModelInfo() {
           </InfoCard>
           <InfoCard
             title="Entity Set"
-            body="The project maps outputs to the 18 OntoNotes-style entity classes used in training and evaluation."
+            body="The project maps outputs to the 6 OntoNotes-style entity classes used in training and evaluation."
           />
           <InfoCard
             title="Evaluation"

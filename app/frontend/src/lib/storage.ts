@@ -100,10 +100,9 @@ function persistSavedDocuments(docs: SavedDoc[]) {
 
 function normalizeSavedDocuments(docs: SavedDoc[]) {
   return docs.map((doc) => {
-    const isPanaySample =
-      doc.id === "sample-panay-news-1" ||
-      doc.title.toLowerCase().includes("panay news") ||
-      doc.text.includes("Arthur Defensor Jr.");
+    // Only normalize the built-in default sample document.
+    // Matching by title/text can accidentally overwrite user-saved documents and clear their entities.
+    const isPanaySample = doc.id === "sample-panay-news-1";
 
     if (!isPanaySample) return doc;
 
