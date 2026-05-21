@@ -6,4 +6,4 @@ venv/
 preprocessing/to_bioes_script_compatible.py
 model.safetensors
 docs/
-training/checkpoints/best_model/
+training/checkpoints/best_model/training/checkpoints/best_model/model.safetensors
