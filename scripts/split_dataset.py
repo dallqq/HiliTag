@@ -7,7 +7,7 @@ def main():
     # Set fixed seed for exact reproducibility and preventing data leakage across runs
     random.seed(42)
 
-    input_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'dataset_silver_for_labelstudio.json')
+    input_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'dataset_all_sentences_pre_annotated.json')
     
     # Improve folder structure by generating a dedicated 'splits' subdirectory
     output_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'splits')

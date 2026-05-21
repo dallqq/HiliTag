@@ -8,15 +8,14 @@ from typing import List, Dict, Any, Tuple
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from preprocessing.tokenizer import get_hiligaynon_nlp
 
-def align_tokens_to_bioes(text: str, entities: List[Dict[str, Any]], nlp) -> List[Tuple[str, str]]:
+def align_tokens_to_bioes(text: str, entities: List[Dict[str, Any]], nlp) -> List[List[Tuple[str, str]]]:
     """
     Aligns Label Studio character-level offsets to token-level BIOES tags.
-    Assumes `nlp` returns an object with tokens containing `.text`, `.idx`, and `.i`.
+    Returns a list of sentences, where each sentence is a list of (token_text, tag) tuples.
     """
     doc = nlp(text)
     
     # Initialize all tokens with 'O' (Outside) by default
-    # This prevents the need to continuously append to a list inside loops
     tags = ["O"] * len(doc)
     
     # Sort entities by start offset to process sequentially
@@ -33,15 +32,15 @@ def align_tokens_to_bioes(text: str, entities: List[Dict[str, Any]], nlp) -> Lis
             print(f"Warning: Discarding conflicting overlapping entity bounds starting at {ent['start']}")
 
     for ent in valid_entities:
-        # Safely extract the label
+        # Safely extract the primary label (ignores secondary labels if annotator selected multiple)
         label = ent['labels'][0] if isinstance(ent['labels'], list) else ent['labels']
         
-        # Find tokens that fall within the entity boundary.
-        # Note: Depending on tokenizer strictness, you may want to loosen these bounds
-        # if annotators accidentally include leading/trailing spaces in Label Studio.
+        # Tolerant boundary matching (Intersection):
+        # Includes the token if it overlaps with the annotation boundary.
+        # This prevents missing tokens if a human annotator missed the first/last character.
         ent_tokens = [
             t for t in doc 
-            if t.idx >= ent['start'] and (t.idx + len(t.text)) <= ent['end']
+            if max(t.idx, ent['start']) < min(t.idx + len(t.text), ent['end'])
         ]
         
         if not ent_tokens:
@@ -57,8 +56,16 @@ def align_tokens_to_bioes(text: str, entities: List[Dict[str, Any]], nlp) -> Lis
             for t in ent_tokens[1:-1]:
                 tags[t.i] = f"I-{label}"
                 
-    # Combine the token text with the calculated tags
-    return [(token.text, tags[token.i]) for token in doc]
+    # Group tokens by sentences if the NLP pipeline supports sentence boundaries.
+    # Otherwise, treat the entire document as a single sentence block.
+    conll_sentences = []
+    if doc.has_annotation("SENT_START"):
+        for sent in doc.sents:
+            conll_sentences.append([(token.text, tags[token.i]) for token in sent])
+    else:
+        conll_sentences.append([(token.text, tags[token.i]) for token in doc])
+        
+    return conll_sentences
 
 def convert_label_studio_to_conll(json_data: List[Dict], output_file: str, nlp):
     """
@@ -72,10 +79,14 @@ def convert_label_studio_to_conll(json_data: List[Dict], output_file: str, nlp):
             text = item.get('data', {}).get('text', '')
             annotations = item.get('annotations', [])
             
-            if not annotations:
+            # Filter out tasks that the annotator explicitly skipped/cancelled
+            valid_annotations = [ann for ann in annotations if not ann.get('was_cancelled', False)]
+            
+            if not valid_annotations:
                 continue
                 
-            result = annotations[0].get('result', [])
+            # Assume the first valid annotation holds the final result
+            result = valid_annotations[0].get('result', [])
             
             entities = []
             for res in result:
@@ -88,13 +99,14 @@ def convert_label_studio_to_conll(json_data: List[Dict], output_file: str, nlp):
                             'labels': val['labels']
                         })
             
-            # Align token offsets
-            bioes_tokens = align_tokens_to_bioes(text, entities, nlp)
+            # Align token offsets (returns list of sentences)
+            bioes_sentences = align_tokens_to_bioes(text, entities, nlp)
             
             # Write CONLL output
-            for token, tag in bioes_tokens:
-                f.write(f"{token}\t{tag}\n")
-            f.write("\n") # Sentence separator
+            for sentence in bioes_sentences:
+                for token, tag in sentence:
+                    f.write(f"{token}\t{tag}\n")
+                f.write("\n")  # Empty line separates sentences/documents
 
 
 def process_verified_folder(verified_dir: str, out_dir: str, nlp):
@@ -122,13 +134,20 @@ def process_verified_folder(verified_dir: str, out_dir: str, nlp):
             print(f"Error processing {path}: {e}")
 
 if __name__ == "__main__":
+    # Initialize the tokenizer
     nlp = get_hiligaynon_nlp()
+    
+    # Optional: Add a simple sentencizer if your texts contain multiple sentences per task.
+    # This ensures models with max-token limits (e.g., 512) aren't overwhelmed by long paragraphs.
+    if "sentencizer" not in nlp.pipe_names:
+        nlp.add_pipe("sentencizer")
     
     # Mock data to demonstrate the alignment
     sample_data = [
         {
             "data": {"text": "Si Mayor Jerry Treñas nag-kadto sa Iloilo City."},
             "annotations": [{
+                "was_cancelled": False,
                 "result": [
                     {"type": "labels", "value": {"start": 9, "end": 21, "labels": ["PERSON"]}},
                     {"type": "labels", "value": {"start": 35, "end": 46, "labels": ["GPE"]}}
@@ -159,6 +178,7 @@ if __name__ == "__main__":
     # If a verified split folder exists, process all Label Studio JSONs there
     verified_dir = os.path.join(project_root, 'data', 'splits', 'verified')
     out_converted = os.path.join(data_dir, 'converted_verified')
+    
     if os.path.isdir(verified_dir):
         process_verified_folder(verified_dir, out_converted, nlp)
     else:

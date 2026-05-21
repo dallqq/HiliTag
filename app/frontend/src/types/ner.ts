@@ -1,23 +1,13 @@
-// All 18 OntoNotes 5.0 entity types used in Hiligaynon NER
+// Core entity types used throughout the Hiligaynon NER project.
 export type EntityType =
   | "PERSON"
   | "NORP"
-  | "FAC"
   | "ORG"
-  | "GPE"
-  | "LOC"
-  | "PRODUCT"
+  | "LOCATION"
   | "EVENT"
-  | "WORK_OF_ART"
-  | "LAW"
-  | "LANGUAGE"
-  | "DATE"
-  | "TIME"
-  | "PERCENT"
+  | "DATETIME"
   | "MONEY"
-  | "QUANTITY"
-  | "ORDINAL"
-  | "CARDINAL";
+;
 
 export interface NEREntity {
   text: string;

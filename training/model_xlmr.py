@@ -30,7 +30,7 @@ def initialize_xlmr_model(labels: List[str], model_name: str = "xlm-roberta-base
     )
     
     # 2. Load the Token Classification architecture
-    # ignore_mismatched_sizes is helpful if we load a pre-trained head but have custom OntoNotes labels
+    # ignore_mismatched_sizes is helpful if we load a pre-trained head but have custom labels
     model = AutoModelForTokenClassification.from_pretrained(
         model_name, 
         config=config,
@@ -43,14 +43,16 @@ def initialize_xlmr_model(labels: List[str], model_name: str = "xlm-roberta-base
     return model, tokenizer, config
 
 if __name__ == "__main__":
-    # Mock label list to demonstrate initialization (OntoNotes 5.0 standard mapped to BIOES)
-    # Ideally, this list is dynamically extracted from your .conll training file
+    # Updated label list to demonstrate initialization with the new 29-tag BIOES structure
     mock_labels = [
-        "O", 
-        "B-PERSON", "I-PERSON", "E-PERSON", "S-PERSON",
-        "B-GPE",    "I-GPE",    "E-GPE",    "S-GPE",
-        "B-ORG",    "I-ORG",    "E-ORG",    "S-ORG",
-        "B-DATE",   "I-DATE",   "E-DATE",   "S-DATE"
+        "O",
+        "B-PERSON",   "I-PERSON",   "E-PERSON",   "S-PERSON",
+        "B-ORG",      "I-ORG",      "E-ORG",      "S-ORG",
+        "B-LOCATION", "I-LOCATION", "E-LOCATION", "S-LOCATION",
+        "B-DATETIME", "I-DATETIME", "E-DATETIME", "S-DATETIME",
+        "B-MONEY",    "I-MONEY",    "E-MONEY",    "S-MONEY",
+        "B-EVENT",    "I-EVENT",    "E-EVENT",    "S-EVENT",
+        "B-NORP",     "I-NORP",     "E-NORP",     "S-NORP"
     ]
     
     print(f"Loading {len(mock_labels)} labels into XLM-R Configuration...")

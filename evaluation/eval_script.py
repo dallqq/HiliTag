@@ -1,11 +1,14 @@
 import os
 import sys
 import joblib
+import torch
+from tqdm import tqdm
 from seqeval.metrics import classification_report
 from transformers import pipeline, AutoTokenizer, AutoModelForTokenClassification
 
 # Add parent dir to sys.path to allow importing from 'training'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from training.model_crf_baseline import sent2features
 
 # Ensure docs directory exists for output
 os.makedirs(os.path.join(os.path.dirname(__file__), '../docs'), exist_ok=True)
@@ -13,7 +16,7 @@ os.makedirs(os.path.join(os.path.dirname(__file__), '../docs'), exist_ok=True)
 # File Paths
 CONVERTED_DATA_DIR = os.path.join(os.path.dirname(__file__), '../data/converted_verified')
 TEST_DATA_PATH = os.path.join(CONVERTED_DATA_DIR, 'dataset_test_final.conll')
-TRAIN_DATA_PATH = os.path.join(CONVERTED_DATA_DIR, 'dataset_train_finak.conll')
+TRAIN_DATA_PATH = os.path.join(CONVERTED_DATA_DIR, 'dataset_train_final.conll')
 VAL_DATA_PATH = os.path.join(CONVERTED_DATA_DIR, 'dataset_val_final.conll')
 XLM_MODEL_PATH = os.path.join(os.path.dirname(__file__), '../training/checkpoints/best_model')
 CRF_MODEL_PATH = os.path.join(os.path.dirname(__file__), '../training/checkpoints/crf_baseline_model.joblib')
@@ -54,11 +57,9 @@ def evaluate_crf(sentences, true_labels):
     if not os.path.exists(CRF_MODEL_PATH):
         return "CRF Model not found."
     
-    # Assuming extract_features is importable from model_crf_baseline in an actual run
-    from training.model_crf_baseline import extract_features 
-    
     crf = joblib.load(CRF_MODEL_PATH)
-    X_test = [[extract_features(s, i) for i in range(len(s))] for s in sentences]
+    # sent2features expects sentences where tokens are accessed via sent[i][0]
+    X_test = [sent2features([[w] for w in s]) for s in sentences]
     y_pred = crf.predict(X_test)
     
     report = classification_report(true_labels, y_pred)
@@ -71,18 +72,38 @@ def evaluate_xlm(sentences, true_labels):
         
     tokenizer = AutoTokenizer.from_pretrained(XLM_MODEL_PATH)
     model = AutoModelForTokenClassification.from_pretrained(XLM_MODEL_PATH)
-    nlp = pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="first")
+    # Use default pipeline without aggregation to get exact BIOES tags per subword
+    device = 0 if torch.cuda.is_available() else -1
+    nlp = pipeline("ner", model=model, tokenizer=tokenizer, device=device)
     
     y_pred = []
-    for words in sentences:
+    for words in tqdm(sentences, desc="XLM-R Inference Progress"):
         # Reconstruct sentence text
         text = " ".join(words)
         ner_results = nlp(text)
         
-        # In a real implementation, you will need a complex token-to-word alignment here
-        # since tokenizer word pieces won't 1:1 match the original CoNLL words.
-        # This is a basic placeholder mapping assuming 1:1 for architecture placeholder purposes.
         pred_labels = ['O'] * len(words) 
+        
+        # Calculate character spans for original words to align predicted subwords
+        word_spans = []
+        curr_pos = 0
+        for w in words:
+            word_spans.append((curr_pos, curr_pos + len(w)))
+            curr_pos += len(w) + 1
+            
+        for res in ner_results:
+            start_char, end_char = res['start'], res['end']
+            label = res['entity']
+            
+            # Map subword character offset back to the original word index
+            for w_idx, (w_start, w_end) in enumerate(word_spans):
+                if start_char >= w_start and start_char < w_end:
+                    # Assign label. Prefer 'B-' or 'S-' tags over 'I-'/'E-' if multiple subwords fall into one word
+                    current_label = pred_labels[w_idx]
+                    if current_label == 'O' or (current_label.startswith('I-') and label.startswith('B-')):
+                        pred_labels[w_idx] = label
+                    break
+                    
         y_pred.append(pred_labels)
         
     report = classification_report(true_labels, y_pred)

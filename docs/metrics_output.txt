@@ -1,3 +1,53 @@
-=== Hiligaynon NER Strict Entity-Level Metrics ===
+=== Hiligaynon NER Strict Entity-Level Metrics (Test Split) ===
 
-Dataset missing! Unable to generate accurate seqeval metrics. Please run the evaluation script with a trained model and Gold Standard dataset.
+--- CRF Baseline Performance ---
+              precision    recall  f1-score   support
+
+    CARDINAL       0.40      0.32      0.35        19
+        DATE       0.77      0.76      0.77        80
+       EVENT       0.69      0.47      0.56       162
+         FAC       0.00      0.00      0.00         2
+         GPE       0.00      0.00      0.00         1
+    LANGUAGE       1.00      0.45      0.62        22
+         LAW       0.69      0.37      0.48        30
+         LOC       0.79      0.70      0.74       375
+       MONEY       0.71      0.71      0.71        28
+     ORDINAL       0.50      0.40      0.44         5
+         ORG       0.50      0.34      0.41        29
+     PERCENT       0.50      0.67      0.57         3
+      PERSON       0.69      0.56      0.62       541
+     PRODUCT       0.61      0.30      0.40        47
+    QUANTITY       0.59      0.41      0.48        58
+        TIME       0.52      0.42      0.47        26
+ WORK_OF_ART       0.33      0.09      0.14        22
+
+   micro avg       0.71      0.56      0.63      1450
+   macro avg       0.55      0.41      0.46      1450
+weighted avg       0.70      0.56      0.62      1450
+
+
+
+--- XLM-RoBERTa Performance ---
+              precision    recall  f1-score   support
+
+    CARDINAL       0.00      0.00      0.00        19
+        DATE       0.83      0.85      0.84        80
+       EVENT       0.00      0.00      0.00       162
+         FAC       0.00      0.00      0.00         2
+         GPE       0.00      0.00      0.00         1
+    LANGUAGE       0.00      0.00      0.00        22
+         LAW       0.00      0.00      0.00        30
+         LOC       0.00      0.00      0.00       375
+       MONEY       0.00      0.00      0.00        28
+     ORDINAL       0.00      0.00      0.00         5
+         ORG       0.41      0.59      0.49        29
+     PERCENT       0.00      0.00      0.00         3
+      PERSON       0.70      0.67      0.68       541
+     PRODUCT       0.00      0.00      0.00        47
+    QUANTITY       0.00      0.00      0.00        58
+        TIME       0.00      0.00      0.00        26
+ WORK_OF_ART       0.00      0.00      0.00        22
+
+   micro avg       0.69      0.31      0.43      1450
+   macro avg       0.11      0.12      0.12      1450
+weighted avg       0.31      0.31      0.31      1450
