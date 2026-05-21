@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-type NavTab = "analyze" | "saved" | "model";
+type NavTab = "analyze" | "saved" | "graph" | "model";
 
 const NAV_ITEMS: { id: NavTab; label: string }[] = [
   { id: "analyze", label: "Analyze" },
   { id: "saved", label: "Saved Docs" },
+  { id: "graph", label: "Knowledge Graph" },
   { id: "model", label: "Model Info" },
   
 ];
@@ -36,13 +36,13 @@ export function Header({ activeTab = "analyze", onTabChange }: HeaderProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex gap-1" aria-label="Primary navigation">
+      <nav className="flex max-w-[46vw] gap-1 overflow-x-auto pb-1" aria-label="Primary navigation">
         {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
             onClick={() => onTabChange?.(item.id)}
             className={cn(
-              "rounded-full px-[14px] py-[5px] text-[13px] transition-all",
+              "whitespace-nowrap rounded-full px-[14px] py-[5px] text-[13px] transition-all",
               activeTab === item.id
                 ? "bg-accent font-medium text-white"
                 : "text-ink-muted hover:bg-paper-warm hover:text-ink"

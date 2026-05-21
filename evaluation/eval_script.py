@@ -22,6 +22,25 @@ XLM_MODEL_PATH = os.path.join(os.path.dirname(__file__), '../training/checkpoint
 CRF_MODEL_PATH = os.path.join(os.path.dirname(__file__), '../training/checkpoints/crf_baseline_model.joblib')
 OUTPUT_METRICS_PATH = os.path.join(os.path.dirname(__file__), '../docs/metrics_output.txt')
 
+# Allowed entities updated according to your requirements
+VALID_ENTITIES = {"PERSON", "ORG", "LOCATION", "DATETIME", "MONEY", "EVENT", "NORP"}
+
+def filter_label(label):
+    """
+    Ensures that the predicted or actual label is one of the strictly allowed entities.
+    Filters out any obsolete or incorrectly predicted entity types by mapping them to 'O'.
+    Safely handles BIO/BIOES prefixes (e.g., 'B-PERSON', 'I-ORG').
+    """
+    if label == 'O' or not label:
+        return 'O'
+    
+    # Extract base entity (handle BIOES prefixes like B-, I-, E-, S-)
+    base_entity = label[2:] if (len(label) > 2 and label[1] == '-') else label
+    
+    if base_entity in VALID_ENTITIES:
+        return label
+    return 'O'
+
 def load_conll_data(filepath):
     """
     Loads sentences and BIOES tags from a CoNLL-formatted file.
@@ -45,7 +64,8 @@ def load_conll_data(filepath):
             else:
                 splits = line.split()
                 words.append(splits[0])
-                labels.append(splits[-1])
+                # Filter gold labels to strictly match your 7 categories
+                labels.append(filter_label(splits[-1]))
         if words:
             sentences.append(words)
             sentence_labels.append(labels)
@@ -62,7 +82,10 @@ def evaluate_crf(sentences, true_labels):
     X_test = [sent2features([[w] for w in s]) for s in sentences]
     y_pred = crf.predict(X_test)
     
-    report = classification_report(true_labels, y_pred)
+    # Clean predictions to enforce strictly the 7 categories
+    y_pred_clean = [[filter_label(lbl) for lbl in sent] for sent in y_pred]
+    
+    report = classification_report(true_labels, y_pred_clean)
     return report
 
 def evaluate_xlm(sentences, true_labels):
@@ -72,7 +95,7 @@ def evaluate_xlm(sentences, true_labels):
         
     tokenizer = AutoTokenizer.from_pretrained(XLM_MODEL_PATH)
     model = AutoModelForTokenClassification.from_pretrained(XLM_MODEL_PATH)
-    # Use default pipeline without aggregation to get exact BIOES tags per subword
+    
     device = 0 if torch.cuda.is_available() else -1
     nlp = pipeline("ner", model=model, tokenizer=tokenizer, device=device)
     
@@ -93,7 +116,9 @@ def evaluate_xlm(sentences, true_labels):
             
         for res in ner_results:
             start_char, end_char = res['start'], res['end']
-            label = res['entity']
+            
+            # Extract and filter label against strictly allowed entities
+            label = filter_label(res['entity'])
             
             # Map subword character offset back to the original word index
             for w_idx, (w_start, w_end) in enumerate(word_spans):
