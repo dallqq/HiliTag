@@ -76,7 +76,6 @@ The preprocessing and training stack uses BIOES tags for sequence labeling.
 At the application layer, backend outputs are normalized to a smaller display set used by the frontend:
 
 - PERSON
-- NORP
 - ORG
 - LOCATION
 - EVENT
