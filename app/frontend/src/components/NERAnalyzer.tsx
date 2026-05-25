@@ -7,6 +7,7 @@ import { ResultsPanel } from "@/components/ResultsPanel";
 import { ModelStrip } from "@/components/ModelStrip";
 import { predictEntities } from "@/lib/api";
 import { ENTITY_CONFIG } from "@/lib/entityConfig";
+import { mergeAdjacentEntities } from "@/lib/entityUtils";
 import type { NEREntity, PredictResponse, SessionStats } from "@/types/ner";
 
 export function NERAnalyzer() {
@@ -35,12 +36,13 @@ export function NERAnalyzer() {
         ...e,
         label: ENTITY_CONFIG[e.entity_type]?.label ?? e.entity_type,
       }));
-      setEntities(enriched);
+      const mergedEntities = mergeAdjacentEntities(text, enriched);
+      setEntities(mergedEntities);
       setAnalyzedText(text);
-      setResponse({ ...result, entities: enriched });
+      setResponse({ ...result, entities: mergedEntities });
       setStats((prev) => ({
         sentences: prev.sentences + 1,
-        totalEntities: prev.totalEntities + enriched.length,
+        totalEntities: prev.totalEntities + mergedEntities.length,
       }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");

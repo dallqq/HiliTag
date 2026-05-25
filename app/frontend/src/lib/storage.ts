@@ -1,5 +1,6 @@
 import type { NEREntity } from "@/types/ner";
 import { PANAY_NEWS_SAMPLE_TEXT } from "@/lib/entityConfig";
+import { mergeAdjacentEntities } from "@/lib/entityUtils";
 
 export interface SavedDoc {
   id: string;
@@ -86,6 +87,22 @@ const DEFAULT_SAVED_DOCS: SavedDoc[] = [
   },
 ];
 
+function entitiesEqual(a: NEREntity[], b: NEREntity[]) {
+  if (a.length !== b.length) return false;
+
+  return a.every((entity, index) => {
+    const other = b[index];
+    return (
+      entity.text === other.text &&
+      entity.entity_type === other.entity_type &&
+      entity.label === other.label &&
+      entity.confidence === other.confidence &&
+      entity.start === other.start &&
+      entity.end === other.end
+    );
+  });
+}
+
 function mergeDefaultSavedDocs(docs: SavedDoc[]) {
   const existingIds = new Set(docs.map((doc) => doc.id));
   const missingDefaults = DEFAULT_SAVED_DOCS.filter((doc) => !existingIds.has(doc.id));
@@ -100,17 +117,25 @@ function persistSavedDocuments(docs: SavedDoc[]) {
 
 function normalizeSavedDocuments(docs: SavedDoc[]) {
   return docs.map((doc) => {
-    // Only normalize the built-in default sample document.
-    // Matching by title/text can accidentally overwrite user-saved documents and clear their entities.
     const isPanaySample = doc.id === "sample-panay-news-1";
+    const normalizedEntities = mergeAdjacentEntities(doc.text, doc.entities);
+    const sampleText = isPanaySample ? PANAY_NEWS_SAMPLE_TEXT : doc.text;
+    const sampleTitle = isPanaySample ? "Panay News — Sample" : doc.title;
 
-    if (!isPanaySample) return doc;
+    const needsUpdate =
+      !entitiesEqual(doc.entities, normalizedEntities) ||
+      sampleText !== doc.text ||
+      sampleTitle !== doc.title;
+
+    if (!needsUpdate) {
+      return doc;
+    }
 
     return {
       ...doc,
-      title: "Panay News — Sample",
-      text: PANAY_NEWS_SAMPLE_TEXT,
-      entities: [],
+      title: sampleTitle,
+      text: sampleText,
+      entities: normalizedEntities,
     };
   });
 }
@@ -119,6 +144,7 @@ export function saveDocumentLocally(doc: Omit<SavedDoc, "id" | "createdAt">): Sa
   const docs = getSavedDocuments();
   const newDoc: SavedDoc = {
     ...doc,
+    entities: mergeAdjacentEntities(doc.text, doc.entities),
     id: crypto.randomUUID(),
     createdAt: Date.now(),
   };
@@ -152,7 +178,17 @@ export function updateSavedDocument(id: string, updates: Partial<SavedDoc>) {
   const docs = getSavedDocuments();
   const index = docs.findIndex((d) => d.id === id);
   if (index > -1) {
-    docs[index] = { ...docs[index], ...updates };
+    const nextText = updates.text ?? docs[index].text;
+    const nextEntities = updates.entities
+      ? mergeAdjacentEntities(nextText, updates.entities)
+      : docs[index].entities;
+
+    docs[index] = {
+      ...docs[index],
+      ...updates,
+      text: nextText,
+      entities: nextEntities,
+    };
     persistSavedDocuments(docs);
   }
 }

@@ -149,9 +149,7 @@ if __name__ == "__main__":
             "annotations": [{
                 "was_cancelled": False,
                 "result": [
-                    {"type": "labels", "value": {"start": 9, "end": 21, "labels": ["PERSON"]}},
-                    {"type": "labels", "value": {"start": 35, "end": 46, "labels": ["GPE"]}}
-                ]
+                    {"type": "labels", "value": {"start": 9, "end": 21, "labels": ["PERSON"]}},                ]
             }]
         }
     ]

@@ -51,8 +51,7 @@ if __name__ == "__main__":
         "B-LOCATION", "I-LOCATION", "E-LOCATION", "S-LOCATION",
         "B-DATETIME", "I-DATETIME", "E-DATETIME", "S-DATETIME",
         "B-MONEY",    "I-MONEY",    "E-MONEY",    "S-MONEY",
-        "B-EVENT",    "I-EVENT",    "E-EVENT",    "S-EVENT",
-        "B-NORP",     "I-NORP",     "E-NORP",     "S-NORP"
+        "B-EVENT",    "I-EVENT",    "E-EVENT",    "S-EVENT"
     ]
     
     print(f"Loading {len(mock_labels)} labels into XLM-R Configuration...")

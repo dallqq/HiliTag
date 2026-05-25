@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { getSavedDocuments, deleteSavedDocument, updateSavedDocument, type SavedDoc } from "@/lib/storage";
+import { mergeAdjacentEntities } from "@/lib/entityUtils";
 import { NERHighlighter } from "./NERHighlighter";
 import { EntityTable } from "./EntityTable";
 
@@ -38,6 +39,10 @@ export function SavedDocuments({ onEditAnalyze }: { onEditAnalyze: (text: string
   }, [docs, searchTerm]);
 
   const selectedDoc = docs.find((d) => d.id === selectedId);
+  const selectedEntities = useMemo(() => {
+    if (!selectedDoc) return [];
+    return mergeAdjacentEntities(selectedDoc.text, selectedDoc.entities);
+  }, [selectedDoc]);
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -46,9 +51,11 @@ export function SavedDocuments({ onEditAnalyze }: { onEditAnalyze: (text: string
     setDocs(newDocs);
   };
 
-  const handleUpdateEntities = (newEntities: any[]) => {
+  const handleUpdateEntities = (newEntities: SavedDoc["entities"]) => {
     if (!selectedDoc) return;
-    updateSavedDocument(selectedDoc.id, { entities: newEntities });
+    updateSavedDocument(selectedDoc.id, {
+      entities: mergeAdjacentEntities(selectedDoc.text, newEntities),
+    });
     setDocs(getSavedDocuments());
   };
 
@@ -124,7 +131,7 @@ export function SavedDocuments({ onEditAnalyze }: { onEditAnalyze: (text: string
                 <div className="rounded-xl border border-[rgba(139,69,19,0.15)] bg-white p-5 leading-relaxed text-ink shadow-sm">
                      <NERHighlighter
                        text={selectedDoc.text}
-                       entities={selectedDoc.entities}
+                       entities={selectedEntities}
                        onEntitiesChange={(newEntities) => handleUpdateEntities(newEntities)}
                      />
                 </div>
@@ -133,7 +140,7 @@ export function SavedDocuments({ onEditAnalyze }: { onEditAnalyze: (text: string
              <div>
                 <h2 className="mb-3 text-[13px] font-medium uppercase tracking-[0.06em] text-ink-muted">Extracted Entities (Editable)</h2>
                  <EntityTable 
-                   entities={selectedDoc.entities} 
+                   entities={selectedEntities} 
                    isEditable={true} 
                    showConfidence={false}
                    onChange={(newEntities) => handleUpdateEntities(newEntities)} 

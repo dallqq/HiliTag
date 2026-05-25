@@ -1,15 +1,14 @@
 "use client";
 
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-type NavTab = "analyze" | "saved" | "graph" | "model";
+type NavTab = "analyze" | "saved" | "graph";
 
 const NAV_ITEMS: { id: NavTab; label: string }[] = [
   { id: "analyze", label: "Analyze" },
   { id: "saved", label: "Saved Docs" },
   { id: "graph", label: "Knowledge Graph" },
-  { id: "model", label: "Model Info" },
-  
 ];
 
 interface HeaderProps {
@@ -22,8 +21,15 @@ export function Header({ activeTab = "analyze", onTabChange }: HeaderProps) {
     <header className="sticky top-0 z-50 flex h-[58px] items-center justify-between border-b border-[rgba(139,69,19,0.25)] bg-paper px-8">
       {/* Logo */}
       <div className="flex items-center gap-2.5">
-        <div className="flex h-[34px] w-[34px] items-center justify-center rounded-[6px] bg-accent font-lora text-[15px] font-semibold tracking-tight text-white">
-          Hl
+        <div className="relative h-[40px] w-[40px] overflow-hidden rounded-[6px] bg-transparent">
+          <Image
+            src="/logo.png"
+            alt="HiliTag logo"
+            fill
+            sizes="40px"
+            className="object-contain"
+            priority
+          />
         </div>
         <div>
           <p className="font-lora text-[17px] font-semibold leading-tight tracking-tight text-ink">
@@ -56,7 +62,7 @@ export function Header({ activeTab = "analyze", onTabChange }: HeaderProps) {
       <div className="flex items-center gap-3">
         {/* GitHub link */}
         <a
-          href={process.env.NEXT_PUBLIC_GITHUB_REPO || "https://github.com/your/repo"}
+          href={process.env.NEXT_PUBLIC_GITHUB_REPO || "https://github.com/dallqq/HiliTag"}
           target="_blank"
           rel="noreferrer"
           title="View repository on GitHub"

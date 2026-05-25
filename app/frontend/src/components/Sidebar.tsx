@@ -23,8 +23,11 @@ export function Sidebar({ entities, sessionStats }: SidebarProps) {
           Entity types
         </p>
         <ul className="flex flex-col gap-[3px]">
-          {(Object.entries(ENTITY_CONFIG) as [EntityType, typeof ENTITY_CONFIG[EntityType]][]).map(
-            ([type, cfg]) => {
+          {(
+            Object.entries(ENTITY_CONFIG) as [EntityType, typeof ENTITY_CONFIG[EntityType]][]
+          )
+            .filter(([type]) => type !== "NORP")
+            .map(([type, cfg]) => {
               const count = countFor(type);
               return (
                 <li

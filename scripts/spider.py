@@ -189,7 +189,7 @@ def main():
            "attr": "class",
            "val": "entry-content",
            "lang_check": True, 
-           "max": 4000
+           "max": 3500
         },
         {
             "name": "Hiligaynon Wikipedia",
@@ -210,8 +210,31 @@ def main():
            "attr": "class",
            "val": "docSubContent",
            "lang_check": True,
-           "max": 1500
+           "max": 1000
        },
+        {
+           "name": "Bombo Radyo Iloilo - Negosyo (Business & Economy)",
+           "url": "https://iloilo.bomboradyo.com/category/business-news/", 
+           "fallback_url": "https://iloilo.bomboradyo.com/category/negosyo/",
+           "tag": "div",
+           "attr": "class",
+           "val": "entry-content",
+           "lang_check": True, 
+           "max": 500, 
+           "path_prefix": "/category/negosyo/" 
+        },
+        {
+           "name": "PAGASA - DOST (Regional Forecast)",
+           "url": "https://www.pagasa.dost.gov.ph/regional-forecast/visprsd",
+           "fallback_url": "https://www.pagasa.dost.gov.ph/ten-day-regional-agri-weather",
+           "tag": "div",
+           "attr": "class",
+           "val": "entry-content",
+           "lang_check": True, 
+           "max": 500, 
+           "path_prefix": "/category/negosyo/" 
+        },
+
     ]
     
     for src in sources:

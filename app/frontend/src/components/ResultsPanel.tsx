@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { mergeAdjacentEntities } from "@/lib/entityUtils";
 import { NERHighlighter } from "./NERHighlighter";
 import { EntityTable } from "./EntityTable";
 import { JsonOutput } from "./JsonOutput";
@@ -34,8 +35,14 @@ export function ResultsPanel({
   const [editableEntities, setEditableEntities] = useState<NEREntity[]>(entities);
 
   useEffect(() => {
-    setEditableEntities(entities);
-  }, [entities]);
+    setEditableEntities(mergeAdjacentEntities(text, entities));
+  }, [entities, text]);
+
+  const mergedEntities = mergeAdjacentEntities(text, editableEntities);
+
+  const handleEntitiesChange = (nextEntities: NEREntity[]) => {
+    setEditableEntities(mergeAdjacentEntities(text, nextEntities));
+  };
 
   const handleSave = () => {
     if (!text) return;
@@ -48,7 +55,7 @@ export function ResultsPanel({
       saveDocumentLocally({
         title: titlePrompt || "Untitled Document",
         text,
-        entities: editableEntities,
+        entities: mergedEntities,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -84,7 +91,7 @@ export function ResultsPanel({
   const displayedResponse = response
     ? {
         ...response,
-        entities: editableEntities,
+        entities: mergedEntities,
       }
     : null;
 
@@ -133,8 +140,8 @@ export function ResultsPanel({
           {text ? (
             <NERHighlighter
               text={text}
-              entities={editableEntities}
-              onEntitiesChange={setEditableEntities}
+              entities={mergedEntities}
+              onEntitiesChange={handleEntitiesChange}
             />
           ) : (
             <EmptyState />
@@ -144,7 +151,7 @@ export function ResultsPanel({
 
       {activeTab === "table" && (
         <div role="tabpanel" aria-label="Entity table">
-          <EntityTable entities={editableEntities} />
+          <EntityTable entities={mergedEntities} />
         </div>
       )}
 

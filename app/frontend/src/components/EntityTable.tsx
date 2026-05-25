@@ -79,7 +79,9 @@ export function EntityTable({ entities, isEditable, onChange, showConfidence }: 
                         outline: `1px solid ${cfg.border}`,
                       }}
                     >
-                      {Object.keys(ENTITY_CONFIG).map((type) => (
+                      {Object.keys(ENTITY_CONFIG)
+                        .filter((type) => type !== "NORP")
+                        .map((type) => (
                         <option key={type} value={type}>
                           {type}
                         </option>

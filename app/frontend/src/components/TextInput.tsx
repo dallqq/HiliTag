@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef } from "react";
-import { SAMPLE_TEXTS } from "@/lib/entityConfig";
 import { cn } from "@/lib/utils";
 
 interface TextInputProps {
@@ -20,11 +19,6 @@ export function TextInput({
   isLoading,
 }: TextInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const loadSample = (text: string) => {
-    onChange(text);
-    textareaRef.current?.focus();
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -102,21 +96,6 @@ export function TextInput({
         <span className="text-[11.5px] text-ink-faint">
           or <kbd className="rounded bg-paper-mid px-1 py-0.5 font-mono text-[10px]">⌘ Enter</kbd>
         </span>
-
-        {/* Samples */}
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-[11.5px] text-ink-faint">Try sample:</span>
-          {SAMPLE_TEXTS.map((s) => (
-            <button
-              key={s.label}
-              onClick={() => loadSample(s.text)}
-              disabled={isLoading}
-              className="rounded-lg border border-[rgba(139,69,19,0.15)] bg-accent-light px-[11px] py-[5px] text-[11.5px] font-medium text-accent transition-all hover:bg-[#efd8c6] disabled:opacity-40"
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
       </div>
     </section>
   );

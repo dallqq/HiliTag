@@ -28,6 +28,10 @@ interface GraphEdge {
   kind: GraphEdgeKind;
   weight: number;
   docIds: string[];
+  // Optional semantic relation label inferred from text between mentions
+  relation?: string;
+  // Example snippets supporting the relation
+  snippets?: string[];
 }
 
 interface PositionedNode extends GraphNode {
@@ -41,7 +45,7 @@ interface GraphBuildResult {
   edges: GraphEdge[];
 }
 
-const ENTITY_TYPES = Object.keys(ENTITY_CONFIG) as EntityType[];
+const ENTITY_TYPES = (Object.keys(ENTITY_CONFIG) as EntityType[]).filter((t) => t !== "NORP");
 
 function normalizeEntityText(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
@@ -74,6 +78,7 @@ function buildKnowledgeGraph(docs: SavedDoc[]): GraphBuildResult {
     });
 
     const perDocEntityCounts = new Map<string, number>();
+    const perDocEntityInstances = new Map<string, { text: string; start: number; end: number }[]>();
 
     for (const entity of doc.entities) {
       const normalized = normalizeEntityText(entity.text);
@@ -99,6 +104,11 @@ function buildKnowledgeGraph(docs: SavedDoc[]): GraphBuildResult {
 
       perDocEntityCounts.set(key, (perDocEntityCounts.get(key) ?? 0) + 1);
 
+      // Track the actual mention spans for this doc so we can extract relation snippets
+      const inst = perDocEntityInstances.get(key) ?? [];
+      inst.push({ text: entity.text.trim(), start: entity.start, end: entity.end });
+      perDocEntityInstances.set(key, inst);
+
       const edgeKey = `doc-edge:${doc.id}:${key}`;
       const edge = docEntityEdgeMap.get(edgeKey);
       if (!edge) {
@@ -123,15 +133,76 @@ function buildKnowledgeGraph(docs: SavedDoc[]): GraphBuildResult {
         const boost = Math.min(perDocEntityCounts.get(a) ?? 1, perDocEntityCounts.get(b) ?? 1);
         const edge = entityEntityEdgeMap.get(pairKey);
         if (!edge) {
+          // Initialize with relation/snippets extracted from the first co-occurrence
+          const snippets: string[] = [];
+          const relation = (() => {
+            // For each mention pair between these two entity keys, extract the between-text and derive a short label
+            const instA = perDocEntityInstances.get(a) ?? [];
+            const instB = perDocEntityInstances.get(b) ?? [];
+            for (const ia of instA) {
+              for (const ib of instB) {
+                // ensure ordering by position
+                let left = ia;
+                let right = ib;
+                if (ia.start > ib.start) {
+                  left = ib;
+                  right = ia;
+                }
+                const between = doc.text.slice(left.end, right.start).trim();
+                if (between.length > 0) {
+                  const cleaned = between.replace(/[\n\r]+/g, " ").replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "");
+                  if (cleaned.length > 0) snippets.push(cleaned.slice(0, 120));
+                }
+              }
+            }
+
+            // Heuristic relation label: prefer short verb/prep triggers if present, otherwise use the shortest between-snippet
+            const triggers = ["visited","met","sent","discuss","works","born","in","at","from","to","of","with","for","reported","dined","announced","appointed"];
+            for (const s of snippets) {
+              const low = s.toLowerCase();
+              for (const t of triggers) {
+                if (low.includes(` ${t} `) || low.startsWith(t + " ") || low.endsWith(" " + t) || low.includes(` ${t}s `)) {
+                  return t;
+                }
+              }
+            }
+
+            if (snippets.length > 0) return snippets[0].split(/[,;.]/)[0];
+            return "related";
+          })();
+
           entityEntityEdgeMap.set(pairKey, {
             source: a,
             target: b,
             weight: boost,
             docIds: new Set([doc.id]),
+            relation,
+            snippets,
           });
         } else {
           edge.weight += boost;
           edge.docIds.add(doc.id);
+          // Update relation/snippets with any new evidence from this document
+          const instA = perDocEntityInstances.get(a) ?? [];
+          const instB = perDocEntityInstances.get(b) ?? [];
+          for (const ia of instA) {
+            for (const ib of instB) {
+              let left = ia;
+              let right = ib;
+              if (ia.start > ib.start) {
+                left = ib;
+                right = ia;
+              }
+              const between = doc.text.slice(left.end, right.start).trim();
+              if (between.length > 0) {
+                const cleaned = between.replace(/[\n\r]+/g, " ").replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "");
+                if (cleaned.length > 0) {
+                  edge.snippets = edge.snippets ?? [];
+                  if (!edge.snippets.includes(cleaned.slice(0, 120))) edge.snippets.push(cleaned.slice(0, 120));
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -176,6 +247,8 @@ function buildKnowledgeGraph(docs: SavedDoc[]): GraphBuildResult {
       kind: "entity-entity",
       weight: edge.weight,
       docIds: Array.from(edge.docIds),
+      relation: (edge as any).relation,
+      snippets: (edge as any).snippets,
     });
   }
 
@@ -524,7 +597,7 @@ export function KnowledgeGraphView() {
                         opacity={isSelected ? 0.95 : 0.35}
                       >
                         <title>
-                          {`${getNodeLabel(edge.source)} -> ${getNodeLabel(edge.target)} | weight ${edge.weight}`}
+                          {`${getNodeLabel(edge.source)} -> ${getNodeLabel(edge.target)}${edge.relation ? ` | rel: ${edge.relation}` : ""} | weight ${edge.weight}`}
                         </title>
                       </line>
                     );
@@ -606,9 +679,12 @@ export function KnowledgeGraphView() {
                             >
                               <p className="font-medium text-ink">{otherLabel}</p>
                               <p className="mt-1 text-[12px] text-ink-muted">
-                                {edge.kind === "doc-entity" ? "Doc to Entity" : "Entity Co-Link"} • Weight {edge.weight} •
+                                {edge.kind === "doc-entity" ? "Doc to Entity" : edge.relation ? `${edge.relation}` : "Entity Co-Link"} • Weight {edge.weight} •
                                 {` ${edge.docIds.length} supporting docs`}
                               </p>
+                              {edge.snippets && edge.snippets.length > 0 && (
+                                <p className="mt-1 text-[12px] text-ink-muted">{`"${edge.snippets[0]}"`}</p>
+                              )}
                             </li>
                           );
                         })}
@@ -661,6 +737,7 @@ export function KnowledgeGraphView() {
                   <th className="px-3 py-1">Type</th>
                   <th className="px-3 py-1">Source</th>
                   <th className="px-3 py-1">Target</th>
+                  <th className="px-3 py-1">Relation</th>
                   <th className="px-3 py-1">Weight</th>
                   <th className="px-3 py-1">Supporting Docs</th>
                 </tr>
@@ -680,6 +757,7 @@ export function KnowledgeGraphView() {
                       </td>
                       <td className="px-3 py-2 text-ink">{getNodeLabel(edge.source)}</td>
                       <td className="px-3 py-2 text-ink">{getNodeLabel(edge.target)}</td>
+                      <td className="px-3 py-2 text-ink">{edge.relation ?? "—"}</td>
                       <td className="px-3 py-2 text-ink">{edge.weight}</td>
                       <td className="rounded-r-md px-3 py-2 text-ink-muted">{edge.docIds.length}</td>
                     </tr>
