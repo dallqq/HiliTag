@@ -164,8 +164,3 @@ For a clean end-to-end workflow, use this order:
 4. Start the Flask backend.
 5. Start the Next.js frontend.
 6. Inspect saved analyses and error diagnostics.
-
-## Additional Documentation
-
-- [project_phases_pctf.md](project_phases_pctf.md) for the phase-by-phase research plan
-- [app/frontend/README.md](app/frontend/README.md) for frontend-specific notes, though it is less authoritative than this root document
