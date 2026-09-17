@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
+import { SAMPLE_TEXTS } from "@/lib/entityConfig";
 
 interface TextInputProps {
   value: string;
@@ -35,10 +36,25 @@ export function TextInput({
       <h1 className="font-lora text-[18px] font-medium text-ink">
         Analyze Hiligaynon text
       </h1>
-      <p className="mb-3.5 mt-1 text-[13px] leading-relaxed text-ink-muted">
+      <p className="mb-3 mt-1 text-[13px] leading-relaxed text-ink-muted">
         Paste or type any Hiligaynon sentence or passage. The model will
         identify and classify named entities using XLM-RoBERTa.
       </p>
+
+      {/* Sample text quick pills */}
+      <div className="mb-2.5 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-muted">
+        <span className="font-medium text-ink-faint">Try sample text:</span>
+        {SAMPLE_TEXTS.map((sample, idx) => (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => onChange(sample.text)}
+            className="rounded-full border border-[rgba(139,69,19,0.2)] bg-paper-warm px-3 py-0.5 text-[11.5px] font-medium text-ink-muted transition-all hover:border-accent hover:bg-accent-light hover:text-accent"
+          >
+            {sample.label}
+          </button>
+        ))}
+      </div>
 
       <textarea
         ref={textareaRef}

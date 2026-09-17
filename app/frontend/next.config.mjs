@@ -1,14 +1,16 @@
 /** @type {import('next').NextConfig} */
+const isGitHubPages = process.env.GITHUB_PAGES === "true";
+
 const nextConfig = {
-  async rewrites() {
-    return [
-      {
-        source: "/api/predict",
-        destination: process.env.FLASK_API_URL
-          ? `${process.env.FLASK_API_URL}/api/predict`
-          : "http://localhost:5000/api/predict",
-      },
-    ];
+  output: "export",
+  basePath: isGitHubPages ? "/HiliTag" : "",
+  assetPrefix: isGitHubPages ? "/HiliTag" : undefined,
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
+  env: {
+    NEXT_PUBLIC_BASE_PATH: isGitHubPages ? "/HiliTag" : "",
   },
 };
 

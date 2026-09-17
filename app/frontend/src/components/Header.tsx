@@ -23,7 +23,7 @@ export function Header({ activeTab = "analyze", onTabChange }: HeaderProps) {
       <div className="flex items-center gap-2.5">
         <div className="relative h-[40px] w-[40px] overflow-hidden rounded-[6px] bg-transparent">
           <Image
-            src="/logo.png"
+            src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.png`}
             alt="HiliTag logo"
             fill
             sizes="40px"
@@ -75,7 +75,7 @@ export function Header({ activeTab = "analyze", onTabChange }: HeaderProps) {
 
         {/* Docs download */}
         <a
-          href="/HiliTag_docs.md"
+          href={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/HiliTag_docs.md`}
           download
           title="Download project docs"
           className="p-2 hover:bg-paper-warm rounded text-ink-muted hover:text-ink"

@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     "Fine-tuned XLM-RoBERTa model for Named Entity Recognition in Hiligaynon. Identifies 18 OntoNotes 5.0 entity categories.",
   keywords: ["Hiligaynon", "NER", "Named Entity Recognition", "XLM-RoBERTa", "NLP", "Ilonggo"],
   icons: {
-    icon: "/icon.ico",
+    icon: `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/icon.ico`,
   },
 };
 

@@ -66,7 +66,17 @@ function buildKnowledgeGraph(docs: SavedDoc[]): GraphBuildResult {
     }
   >();
   const docEntityEdgeMap = new Map<string, { source: string; target: string; weight: number; docIds: Set<string> }>();
-  const entityEntityEdgeMap = new Map<string, { source: string; target: string; weight: number; docIds: Set<string> }>();
+  const entityEntityEdgeMap = new Map<
+    string,
+    {
+      source: string;
+      target: string;
+      weight: number;
+      docIds: Set<string>;
+      relation?: string;
+      snippets?: string[];
+    }
+  >();
 
   for (const doc of docs) {
     nodes.push({
@@ -106,7 +116,7 @@ function buildKnowledgeGraph(docs: SavedDoc[]): GraphBuildResult {
 
       // Track the actual mention spans for this doc so we can extract relation snippets
       const inst = perDocEntityInstances.get(key) ?? [];
-      inst.push({ text: entity.text.trim(), start: entity.start, end: entity.end });
+      inst.push({ text: entity.text.trim(), start: entity.start ?? 0, end: entity.end ?? 0 });
       perDocEntityInstances.set(key, inst);
 
       const edgeKey = `doc-edge:${doc.id}:${key}`;
