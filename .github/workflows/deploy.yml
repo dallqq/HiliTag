@@ -45,6 +45,7 @@ jobs:
         env:
           GITHUB_PAGES: "true"
           NEXT_PUBLIC_BASE_PATH: "/HiliTag"
+          NEXT_PUBLIC_FLASK_API_URL: "https://dallqq-hilitag.hf.space"
         run: npm run build
 
       - name: Upload Pages artifact
