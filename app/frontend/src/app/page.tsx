@@ -8,18 +8,21 @@ import { KnowledgeGraphView } from "@/components/KnowledgeGraphView";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"analyze" | "saved" | "graph">("analyze");
+  const [editorText, setEditorText] = useState<string>("");
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-paper">
       <Header activeTab={activeTab} onTabChange={setActiveTab} />
-      {activeTab === "analyze" && <NERAnalyzer />}
-      {activeTab === "saved" && <SavedDocuments onEditAnalyze={(text) => {
-         setActiveTab("analyze");
-         // NOTE: Ideally we'd pass this text to NERAnalyzer, but for simplicity, the NERAnalyzer can be extended to observe a context or localstorage, 
-         // OR we just lift the analyzer input text up here. For now we will create a dedicated behavior.
-      }} />}
+      {activeTab === "analyze" && <NERAnalyzer initialText={editorText} />}
+      {activeTab === "saved" && (
+        <SavedDocuments
+          onEditAnalyze={(text) => {
+            setEditorText(text);
+            setActiveTab("analyze");
+          }}
+        />
+      )}
       {activeTab === "graph" && <KnowledgeGraphView />}
-      
     </div>
   );
 }

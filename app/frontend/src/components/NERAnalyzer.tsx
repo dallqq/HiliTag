@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { TextInput } from "@/components/TextInput";
 import { ResultsPanel } from "@/components/ResultsPanel";
@@ -10,8 +10,8 @@ import { ENTITY_CONFIG } from "@/lib/entityConfig";
 import { mergeAdjacentEntities } from "@/lib/entityUtils";
 import type { NEREntity, PredictResponse, SessionStats } from "@/types/ner";
 
-export function NERAnalyzer() {
-  const [inputText, setInputText] = useState("");
+export function NERAnalyzer({ initialText = "" }: { initialText?: string }) {
+  const [inputText, setInputText] = useState(initialText);
   const [analyzedText, setAnalyzedText] = useState("");
   const [entities, setEntities] = useState<NEREntity[]>([]);
   const [response, setResponse] = useState<PredictResponse | null>(null);
@@ -21,6 +21,12 @@ export function NERAnalyzer() {
     sentences: 0,
     totalEntities: 0,
   });
+
+  useEffect(() => {
+    if (initialText) {
+      setInputText(initialText);
+    }
+  }, [initialText]);
 
   const handleAnalyze = useCallback(async () => {
     const text = inputText.trim();

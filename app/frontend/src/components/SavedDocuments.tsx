@@ -125,6 +125,14 @@ export function SavedDocuments({ onEditAnalyze }: { onEditAnalyze: (text: string
           <div className="mx-auto w-full max-w-4xl">
              <div className="mb-6 flex items-center justify-between border-b border-[rgba(139,69,19,0.15)] pb-4">
                 <h1 className="font-lora text-2xl font-semibold text-ink">{selectedDoc.title}</h1>
+                <button
+                  onClick={() => onEditAnalyze(selectedDoc.text)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-accent/20 bg-accent/10 px-3.5 py-1.5 text-[12.5px] font-medium text-accent transition-colors hover:bg-accent/20"
+                  title="Open this text in the analyzer"
+                >
+                  <span>Analyze in Editor</span>
+                  <span>→</span>
+                </button>
              </div>
              <div className="mb-8">
                 <h2 className="mb-3 text-[13px] font-medium uppercase tracking-[0.06em] text-ink-muted">Document Text</h2>

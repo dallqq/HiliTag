@@ -16,72 +16,38 @@ export const SAVED_DOCS_UPDATED_EVENT = "hilitag_saved_docs_updated";
 const DEFAULT_SAVED_DOCS: SavedDoc[] = [
   {
     id: "sample-panay-news-1",
-    title: "Panay News — Sample",
+    title: "Panay News — Infrastructure Report",
     text: PANAY_NEWS_SAMPLE_TEXT,
-    entities: [],
+    entities: [
+      { text: "Panay News", entity_type: "ORG", label: "Organization", confidence: 0.98, start: 23, end: 33 },
+      { text: "Governor Arthur Defensor Jr.", entity_type: "PERSON", label: "Person", confidence: 0.99, start: 49, end: 77 },
+      { text: "Iloilo City", entity_type: "LOCATION", label: "Location", confidence: 0.98, start: 155, end: 166 },
+      { text: "Provincial Capitol", entity_type: "LOCATION", label: "Location", confidence: 0.96, start: 186, end: 204 },
+      { text: "Capitol building", entity_type: "LOCATION", label: "Location", confidence: 0.92, start: 398, end: 414 },
+      { text: "Department of Public Works and Highways", entity_type: "ORG", label: "Organization", confidence: 0.97, start: 458, end: 497 },
+      { text: "SM City Iloilo", entity_type: "LOCATION", label: "Location", confidence: 0.95, start: 618, end: 632 },
+      { text: "Barangay San Rafael", entity_type: "LOCATION", label: "Location", confidence: 0.94, start: 634, end: 653 },
+      { text: "Barangay Balantang", entity_type: "LOCATION", label: "Location", confidence: 0.93, start: 659, end: 677 },
+      { text: "Panay", entity_type: "LOCATION", label: "Location", confidence: 0.94, start: 753, end: 758 },
+      { text: "Mayor Jerry Treñas", entity_type: "PERSON", label: "Person", confidence: 0.99, start: 846, end: 864 },
+      { text: "Panay News", entity_type: "ORG", label: "Organization", confidence: 0.98, start: 1269, end: 1279 },
+      { text: "Iloilo City", entity_type: "LOCATION", label: "Location", confidence: 0.98, start: 1373, end: 1384 },
+    ],
     createdAt: Date.UTC(2026, 4, 16, 8, 0, 0),
   },
   {
-    id: "sample-dummy-test-1",
-    title: "Dummy Test Document",
-    text: "Maria Santos visited Iloilo City on Monday. She met with the team at HiliTag Labs. The group discussed a new model at the Provincial Capitol. Later, they sent a report to the Department of Public Works and Highways. By evening, everyone had dinner at SM City Iloilo.",
+    id: "sample-dinagyang-2",
+    title: "Dinagyang Festival — Cultural Briefing",
+    text: "Ang Iloilo City Dinagyang Festival, nga ginakilala sang United Nations Educational, Scientific and Cultural Organization, mapahiwas sa buwan sang Enero sa SM City Iloilo. Ginpasalig ni Mayor Jerry Treñas kag sang Provincial Capitol nga handa na ang seguridad para sa mga turista sa Iloilo City kag sa bilog nga Panay.",
     entities: [
-      {
-        text: "Maria Santos",
-        entity_type: "PERSON",
-        label: "Person",
-        confidence: 1,
-        start: 0,
-        end: 12,
-      },
-      {
-        text: "Iloilo City",
-        entity_type: "LOCATION",
-        label: "Location",
-        confidence: 1,
-        start: 21,
-        end: 32,
-      },
-      {
-        text: "Monday",
-        entity_type: "DATETIME",
-        label: "Datetime",
-        confidence: 1,
-        start: 36,
-        end: 42,
-      },
-      {
-        text: "HiliTag Labs",
-        entity_type: "ORG",
-        label: "Organization",
-        confidence: 1,
-        start: 69,
-        end: 81,
-      },
-      {
-        text: "Provincial Capitol",
-        entity_type: "LOCATION",
-        label: "Location",
-        confidence: 1,
-        start: 122,
-        end: 140,
-      },
-      {
-        text: "Department of Public Works and Highways",
-        entity_type: "ORG",
-        label: "Organization",
-        confidence: 1,
-        start: 175,
-        end: 214,
-      },
-      {
-        text: "SM City Iloilo",
-        entity_type: "LOCATION",
-        label: "Location",
-        confidence: 1,
-        start: 251,
-        end: 265,
-      },
+      { text: "Iloilo City Dinagyang Festival", entity_type: "EVENT", label: "Event", confidence: 0.99, start: 4, end: 34 },
+      { text: "United Nations Educational, Scientific and Cultural Organization", entity_type: "ORG", label: "Organization", confidence: 0.98, start: 56, end: 120 },
+      { text: "Enero", entity_type: "DATETIME", label: "Datetime", confidence: 0.95, start: 144, end: 149 },
+      { text: "SM City Iloilo", entity_type: "LOCATION", label: "Location", confidence: 0.97, start: 153, end: 167 },
+      { text: "Mayor Jerry Treñas", entity_type: "PERSON", label: "Person", confidence: 0.99, start: 183, end: 201 },
+      { text: "Provincial Capitol", entity_type: "LOCATION", label: "Location", confidence: 0.96, start: 211, end: 229 },
+      { text: "Iloilo City", entity_type: "LOCATION", label: "Location", confidence: 0.98, start: 276, end: 287 },
+      { text: "Panay", entity_type: "LOCATION", label: "Location", confidence: 0.95, start: 303, end: 308 },
     ],
     createdAt: Date.UTC(2026, 4, 16, 8, 5, 0),
   },
@@ -116,11 +82,32 @@ function persistSavedDocuments(docs: SavedDoc[]) {
 }
 
 function normalizeSavedDocuments(docs: SavedDoc[]) {
-  return docs.map((doc) => {
+  // Replace legacy English dummy document with authentic Hiligaynon Dinagyang document if present
+  const migrated = docs.map((doc) => {
+    if (doc.id === "sample-dummy-test-1") {
+      return DEFAULT_SAVED_DOCS[1];
+    }
+    if (doc.id === "sample-panay-news-1" && (!doc.entities || doc.entities.length === 0)) {
+      return DEFAULT_SAVED_DOCS[0];
+    }
+    return doc;
+  });
+
+  return migrated.map((doc) => {
     const isPanaySample = doc.id === "sample-panay-news-1";
-    const normalizedEntities = mergeAdjacentEntities(doc.text, doc.entities);
-    const sampleText = isPanaySample ? PANAY_NEWS_SAMPLE_TEXT : doc.text;
-    const sampleTitle = isPanaySample ? "Panay News — Sample" : doc.title;
+    const isDinagyangSample = doc.id === "sample-dinagyang-2";
+    const sampleText = isPanaySample
+      ? PANAY_NEWS_SAMPLE_TEXT
+      : isDinagyangSample
+      ? DEFAULT_SAVED_DOCS[1].text
+      : doc.text;
+    const sampleTitle = isPanaySample
+      ? DEFAULT_SAVED_DOCS[0].title
+      : isDinagyangSample
+      ? DEFAULT_SAVED_DOCS[1].title
+      : doc.title;
+
+    const normalizedEntities = mergeAdjacentEntities(sampleText, doc.entities);
 
     const needsUpdate =
       !entitiesEqual(doc.entities, normalizedEntities) ||

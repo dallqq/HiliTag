@@ -51,9 +51,10 @@ Evaluation is explicit and test-split driven.
 The deployed application is decoupled.
 
 - [app/backend/app.py](app/backend/app.py) serves the NER model through Flask and logs predictions to JSONL.
-- [app/frontend/src/app/page.tsx](app/frontend/src/app/page.tsx) mounts the browser interface.
-- [app/frontend/src/lib/api.ts](app/frontend/src/lib/api.ts) sends prediction requests through the Next.js rewrite path.
-- [app/frontend/next.config.mjs](app/frontend/next.config.mjs) proxies `/api/predict` to the Flask backend.
+- [hilitag-space/app.py](hilitag-space/app.py) exposes the model on Hugging Face Spaces with ZeroGPU and FastAPI/Gradio endpoints.
+- [app/frontend/src/app/page.tsx](app/frontend/src/app/page.tsx) mounts the browser interface (static export for GitHub Pages).
+- [app/frontend/src/lib/api.ts](app/frontend/src/lib/api.ts) dispatches inference queries to the configured backend API or uses the offline showcase dictionary when offline.
+- [app/frontend/src/components/KnowledgeGraphView.tsx](app/frontend/src/components/KnowledgeGraphView.tsx) powers an interactive force-directed relationship engine with Hiligaynon relation extraction.
 
 ## Data and Labeling Workflow
 
@@ -88,14 +89,16 @@ Location-like labels such as GPE, LOC, and FAC are normalized to LOCATION. Date 
 
 The Next.js application is an interactive inspection tool rather than a passive demo page.
 
-- The main analyzer accepts free-form Hiligaynon text and calls the backend prediction endpoint.
-- Extracted entities are highlighted inline and may be resized or removed in the UI.
+- The main analyzer accepts free-form Hiligaynon text and calls the inference backend.
+- Extracted entities are highlighted inline and may be edited, resized, or removed in the UI.
 - A table view exposes entity type and confidence data.
 - A raw JSON view is available for inspection and debugging.
-- Saved documents are kept in localStorage and can be revisited or edited.
-- A knowledge graph view derives nodes and edges from saved analyses.
-
-The frontend currently relies on a Next.js rewrite for `/api/predict`. There is no separate Next API route file in the workspace.
+- Saved documents are stored in localStorage and can be edited or re-analyzed in the editor.
+- **Knowledge Graph**:
+  - Simulates dynamic force-directed physics with pan, zoom, node dragging, and camera auto-centering.
+  - Features Hiligaynon-aware relation extraction recognizing verbal affixes (`nag-`, `gin-`, `naga-`, `mag-`), prepositions (`sa`, `sang`, `didto sa`, `upod sa`), and sentence-bounded co-occurrence.
+  - Provides three view modes: **Bipartite** (documents + entities), **Entities Only** (semantic co-occurrence network), and **Focus** (ego-network spotlighting 1-hop and 2-hop neighborhoods).
+  - Supports research-grade exports into Cytoscape/NetworkX JSON and CSV edge-lists.
 
 ## Backend Behavior
 
