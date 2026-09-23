@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ENTITY_CONFIG } from "@/lib/entityConfig";
 import type { NEREntity } from "@/types/ner";
+import { MobileEntitySheet } from "@/components/MobileEntitySheet";
 
 interface NERHighlighterProps {
   text: string;
@@ -112,6 +113,7 @@ function buildSegments(text: string, spans: ResolvedSpan[]): Segment[] {
 export function NERHighlighter({ text, entities, onEntitiesChange }: NERHighlighterProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [activeEntityIndex, setActiveEntityIndex] = useState<number | null>(null);
   const resolvedSpans = useMemo(() => resolveSpans(text, entities), [text, entities]);
   const segments = useMemo(() => buildSegments(text, resolvedSpans), [text, resolvedSpans]);
   const mirrorChars = useMemo(
@@ -198,85 +200,115 @@ export function NERHighlighter({ text, entities, onEntitiesChange }: NERHighligh
       onEntitiesChange(entities.filter((_, index) => index !== targetSpan.originalIndex));
     };
 
+  const handleEntityClick = (resolvedIndex: number) => () => {
+    if (dragState) return;
+    const targetSpan = resolvedSpans[resolvedIndex];
+    if (targetSpan) {
+      setActiveEntityIndex(targetSpan.originalIndex);
+    }
+  };
+
   return (
-    <div
-      ref={containerRef}
-      className="relative rounded-xl border border-[rgba(139,69,19,0.15)] bg-white px-6 py-5 font-lora text-[15.5px] leading-[2] text-ink"
-      data-dragging-active={Boolean(dragState)}
-      aria-label="Annotated text with highlighted entities"
-    >
+    <>
       <div
-        aria-hidden="true"
-        className={
-          dragState
-            ? "absolute inset-0 z-20 overflow-hidden whitespace-pre-wrap px-6 py-5 font-lora text-[15.5px] leading-[2] text-transparent select-none"
-            : "pointer-events-none absolute inset-0 z-20 overflow-hidden whitespace-pre-wrap px-6 py-5 font-lora text-[15.5px] leading-[2] text-transparent select-none"
-        }
+        ref={containerRef}
+        className="relative rounded-xl border border-[rgba(139,69,19,0.15)] bg-white p-4 md:px-6 md:py-5 font-lora text-[15px] md:text-[15.5px] leading-[1.85] md:leading-[2] text-ink"
+        data-dragging-active={Boolean(dragState)}
+        aria-label="Annotated text with highlighted entities"
       >
-        {mirrorChars.map(({ char, index }) => (
-          <span key={index} data-char-index={index} className="inline">
-            {char === " " ? "\u00a0" : char}
-          </span>
-        ))}
-      </div>
-      <div className="relative z-10">
-        {segments.map((seg, i) => {
-          if (!seg.entity) {
-            return <span key={i}>{seg.text}</span>;
+        <div
+          aria-hidden="true"
+          className={
+            dragState
+              ? "absolute inset-0 z-20 overflow-hidden whitespace-pre-wrap p-4 md:px-6 md:py-5 font-lora text-[15px] md:text-[15.5px] leading-[1.85] md:leading-[2] text-transparent select-none"
+              : "pointer-events-none absolute inset-0 z-20 overflow-hidden whitespace-pre-wrap p-4 md:px-6 md:py-5 font-lora text-[15px] md:text-[15.5px] leading-[1.85] md:leading-[2] text-transparent select-none"
           }
-          const cfg = ENTITY_CONFIG[seg.entity.entity_type];
-          const pct = Math.round(seg.entity.confidence * 100);
-          const isDragging = dragState?.resolvedIndex === seg.resolvedIndex;
-          return (
-            <span
-              key={i}
-              className="entity-highlight group"
-              data-draggable={Boolean(onEntitiesChange)}
-              data-dragging={isDragging}
-              style={{
-                background: cfg.bg,
-                outline: `1.5px solid ${cfg.border}`,
-              }}
-              title={`${cfg.label} · ${pct}% confidence`}
-              aria-label={`${seg.text} — ${cfg.label}, ${pct}% confidence`}
-            >
-              <span className="entity-highlight-text">{seg.text}</span>
-              {onEntitiesChange && seg.resolvedIndex !== undefined && (
-                <>
-                  <button
-                    type="button"
-                    className="entity-handle entity-handle-start"
-                    onPointerDown={handleDragStart(seg.resolvedIndex, "start")}
-                    aria-label={`Resize start of ${seg.entity.entity_type}`}
-                  />
-                  <button
-                    type="button"
-                    className="entity-handle entity-handle-end"
-                    onPointerDown={handleDragStart(seg.resolvedIndex, "end")}
-                    aria-label={`Resize end of ${seg.entity.entity_type}`}
-                  />
-                  <button
-                    type="button"
-                    className="entity-remove-btn"
-                    onClick={handleRemoveEntity(seg.resolvedIndex)}
-                    aria-label={`Remove ${seg.entity.entity_type} label`}
-                    title="Remove label"
-                  >
-                    ×
-                  </button>
-                </>
-              )}
-              <span
-                className="entity-label-sup"
-                style={{ color: cfg.border }}
-                aria-hidden="true"
-              >
-                {seg.entity.entity_type}
-              </span>
+        >
+          {mirrorChars.map(({ char, index }) => (
+            <span key={index} data-char-index={index} className="inline">
+              {char === " " ? "\u00a0" : char}
             </span>
-          );
-        })}
+          ))}
+        </div>
+        <div className="relative z-10">
+          {segments.map((seg, i) => {
+            if (!seg.entity) {
+              return <span key={i}>{seg.text}</span>;
+            }
+            const cfg = ENTITY_CONFIG[seg.entity.entity_type];
+            const pct = Math.round(seg.entity.confidence * 100);
+            const isDragging = dragState?.resolvedIndex === seg.resolvedIndex;
+            return (
+              <span
+                key={i}
+                onClick={seg.resolvedIndex !== undefined ? handleEntityClick(seg.resolvedIndex) : undefined}
+                className="entity-highlight group cursor-pointer active:scale-[0.98] transition-transform"
+                data-draggable={Boolean(onEntitiesChange)}
+                data-dragging={isDragging}
+                style={{
+                  background: cfg.bg,
+                  outline: `1.5px solid ${cfg.border}`,
+                }}
+                title={`${cfg.label} · ${pct}% confidence (tap to inspect/edit)`}
+                aria-label={`${seg.text} — ${cfg.label}, ${pct}% confidence`}
+              >
+                <span className="entity-highlight-text">{seg.text}</span>
+                {onEntitiesChange && seg.resolvedIndex !== undefined && (
+                  <>
+                    <button
+                      type="button"
+                      className="entity-handle entity-handle-start hidden md:block"
+                      onPointerDown={handleDragStart(seg.resolvedIndex, "start")}
+                      aria-label={`Resize start of ${seg.entity.entity_type}`}
+                    />
+                    <button
+                      type="button"
+                      className="entity-handle entity-handle-end hidden md:block"
+                      onPointerDown={handleDragStart(seg.resolvedIndex, "end")}
+                      aria-label={`Resize end of ${seg.entity.entity_type}`}
+                    />
+                    <button
+                      type="button"
+                      className="entity-remove-btn hidden md:flex"
+                      onClick={handleRemoveEntity(seg.resolvedIndex)}
+                      aria-label={`Remove ${seg.entity.entity_type} label`}
+                      title="Remove label"
+                    >
+                      ×
+                    </button>
+                  </>
+                )}
+                <span
+                  className="entity-label-sup"
+                  style={{ color: cfg.border }}
+                  aria-hidden="true"
+                >
+                  {seg.entity.entity_type}
+                </span>
+              </span>
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      {/* Mobile-Specific Touch Entity Inspector & Bound Adjuster Sheet */}
+      <MobileEntitySheet
+        isOpen={activeEntityIndex !== null}
+        onClose={() => setActiveEntityIndex(null)}
+        entity={activeEntityIndex !== null && entities[activeEntityIndex] ? entities[activeEntityIndex] : null}
+        fullText={text}
+        onUpdateEntity={(updated) => {
+          if (activeEntityIndex === null || !onEntitiesChange) return;
+          const next = [...entities];
+          next[activeEntityIndex] = updated;
+          onEntitiesChange(next);
+        }}
+        onDeleteEntity={() => {
+          if (activeEntityIndex === null || !onEntitiesChange) return;
+          onEntitiesChange(entities.filter((_, idx) => idx !== activeEntityIndex));
+          setActiveEntityIndex(null);
+        }}
+      />
+    </>
   );
 }

@@ -14,14 +14,15 @@ const NAV_ITEMS: { id: NavTab; label: string }[] = [
 interface HeaderProps {
   activeTab?: NavTab;
   onTabChange?: (tab: NavTab) => void;
+  onOpenInfo?: () => void;
 }
 
-export function Header({ activeTab = "analyze", onTabChange }: HeaderProps) {
+export function Header({ activeTab = "analyze", onTabChange, onOpenInfo }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-50 flex h-[58px] items-center justify-between border-b border-[rgba(139,69,19,0.25)] bg-paper px-8">
+    <header className="sticky top-0 z-40 flex h-[52px] md:h-[58px] items-center justify-between border-b border-[rgba(139,69,19,0.25)] bg-paper px-4 md:px-8">
       {/* Logo */}
-      <div className="flex items-center gap-2.5">
-        <div className="relative h-[40px] w-[40px] overflow-hidden rounded-[6px] bg-transparent">
+      <div className="flex items-center gap-2 md:gap-2.5">
+        <div className="relative h-[34px] w-[34px] md:h-[40px] md:w-[40px] overflow-hidden rounded-[6px] bg-transparent">
           <Image
             src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.png`}
             alt="HiliTag logo"
@@ -32,17 +33,17 @@ export function Header({ activeTab = "analyze", onTabChange }: HeaderProps) {
           />
         </div>
         <div>
-          <p className="font-lora text-[17px] font-semibold leading-tight tracking-tight text-ink">
+          <p className="font-lora text-[16px] md:text-[17px] font-semibold leading-tight tracking-tight text-ink">
             HiliTag
           </p>
-          <p className="text-[10px] font-light uppercase tracking-[0.08em] text-ink-muted">
+          <p className="text-[9.5px] md:text-[10px] font-light uppercase tracking-[0.08em] text-ink-muted">
             Named Entity Recognition
           </p>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex max-w-[46vw] gap-1 overflow-x-auto pb-1" aria-label="Primary navigation">
+      {/* Desktop Nav (hidden on mobile, bottom nav is used) */}
+      <nav className="hidden md:flex max-w-[46vw] gap-1 overflow-x-auto pb-1" aria-label="Primary navigation">
         {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
@@ -59,26 +60,44 @@ export function Header({ activeTab = "analyze", onTabChange }: HeaderProps) {
         ))}
       </nav>
 
-      <div className="flex items-center gap-3">
-        {/* GitHub link */}
+      {/* Right Actions */}
+      <div className="flex items-center gap-1.5 md:gap-3">
+        {/* Mobile Info Button */}
+        {onOpenInfo && (
+          <button
+            type="button"
+            onClick={onOpenInfo}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(139,69,19,0.18)] bg-paper-warm text-ink-muted transition hover:text-ink md:hidden"
+            title="System Info & Legend"
+            aria-label="System Info & Legend"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+          </button>
+        )}
+
+        {/* GitHub link (desktop) */}
         <a
           href={process.env.NEXT_PUBLIC_GITHUB_REPO || "https://github.com/dallqq/HiliTag"}
           target="_blank"
           rel="noreferrer"
           title="View repository on GitHub"
-          className="p-2 hover:bg-paper-warm rounded text-ink-muted hover:text-ink"
+          className="hidden md:inline-flex p-2 hover:bg-paper-warm rounded text-ink-muted hover:text-ink"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="inline-block">
             <path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.09.66-.22.66-.49 0-.24-.01-.87-.01-1.71-2.78.61-3.37-1.34-3.37-1.34-.45-1.15-1.11-1.46-1.11-1.46-.91-.62.07-.61.07-.61 1.01.07 1.54 1.03 1.54 1.03.9 1.54 2.36 1.1 2.94.84.09-.65.35-1.1.63-1.35-2.22-.25-4.56-1.11-4.56-4.95 0-1.09.39-1.98 1.03-2.68-.1-.26-.45-1.28.1-2.66 0 0 .84-.27 2.75 1.02A9.56 9.56 0 0112 6.8c.85.004 1.71.115 2.51.338 1.9-1.29 2.74-1.02 2.74-1.02.55 1.38.2 2.4.1 2.66.64.7 1.03 1.59 1.03 2.68 0 3.85-2.34 4.7-4.57 4.95.36.31.68.92.68 1.86 0 1.34-.01 2.42-.01 2.75 0 .27.16.59.67.49A10 10 0 0022 12c0-5.52-4.48-10-10-10z" />
           </svg>
         </a>
 
-        {/* Docs download */}
+        {/* Docs download (desktop) */}
         <a
           href={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/HiliTag_docs.md`}
           download
           title="Download project docs"
-          className="p-2 hover:bg-paper-warm rounded text-ink-muted hover:text-ink"
+          className="hidden md:inline-flex p-2 hover:bg-paper-warm rounded text-ink-muted hover:text-ink"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="inline-block">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -88,8 +107,8 @@ export function Header({ activeTab = "analyze", onTabChange }: HeaderProps) {
         </a>
 
         {/* Badge */}
-        <span className="rounded-full border border-[rgba(139,69,19,0.25)] bg-accent-light px-[10px] py-[3px] text-[11px] font-medium uppercase tracking-[0.06em] text-accent">
-          Hiligaynon · hil
+        <span className="rounded-full border border-[rgba(139,69,19,0.25)] bg-accent-light px-2 md:px-[10px] py-[2.5px] md:py-[3px] text-[10px] md:text-[11px] font-medium uppercase tracking-[0.06em] text-accent">
+          <span className="hidden sm:inline">Hiligaynon · </span>hil
         </span>
       </div>
     </header>

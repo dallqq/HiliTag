@@ -578,7 +578,10 @@ export function KnowledgeGraphView() {
     [nodesById, zoom]
   );
 
-  // Pan handlers
+  const pinchDistRef = useRef<number | null>(null);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  // Mouse Pan handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     if (draggedNodeId) return;
     isPanningRef.current = true;
@@ -619,6 +622,72 @@ export function KnowledgeGraphView() {
     }
   };
 
+  // Touch Pan and Pinch-Zoom handlers for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      if (draggedNodeId) return;
+      isPanningRef.current = true;
+      startPanRef.current = {
+        x: e.touches[0].clientX - pan.x,
+        y: e.touches[0].clientY - pan.y,
+      };
+      pinchDistRef.current = null;
+    } else if (e.touches.length === 2) {
+      isPanningRef.current = false;
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      pinchDistRef.current = dist;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      if (draggedNodeId) {
+        if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          const touchSvgX = (e.touches[0].clientX - rect.left - pan.x) / zoom;
+          const touchSvgY = (e.touches[0].clientY - rect.top - pan.y) / zoom;
+          setSimNodes((prev) =>
+            prev.map((n) =>
+              n.id === draggedNodeId
+                ? { ...n, x: touchSvgX, y: touchSvgY, fx: touchSvgX, fy: touchSvgY }
+                : n
+            )
+          );
+        }
+        return;
+      }
+      if (!isPanningRef.current) return;
+      setPan({
+        x: e.touches[0].clientX - startPanRef.current.x,
+        y: e.touches[0].clientY - startPanRef.current.y,
+      });
+    } else if (e.touches.length === 2 && pinchDistRef.current !== null) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      if (pinchDistRef.current > 0) {
+        const factor = dist / pinchDistRef.current;
+        setZoom((prev) => Math.min(2.8, Math.max(0.4, prev * factor)));
+      }
+      pinchDistRef.current = dist;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    isPanningRef.current = false;
+    pinchDistRef.current = null;
+    if (draggedNodeId) {
+      setSimNodes((prev) =>
+        prev.map((n) => (n.id === draggedNodeId ? { ...n, fx: null, fy: null } : n))
+      );
+      setDraggedNodeId(null);
+    }
+  };
+
   // Zoom handlers
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -647,18 +716,18 @@ export function KnowledgeGraphView() {
 
   return (
     <div className="flex flex-1 overflow-hidden bg-[radial-gradient(circle_at_15%_10%,rgba(184,111,47,0.12),transparent_40%),radial-gradient(circle_at_85%_85%,rgba(88,115,84,0.12),transparent_35%)]">
-      <div className="flex w-full flex-1 flex-col overflow-y-auto px-6 py-6 md:px-8">
+      <div className="flex w-full flex-1 flex-col overflow-y-auto px-4 py-4 md:px-8 md:py-6 pb-24 md:pb-8">
         {/* Top Header Card */}
-        <section className="rounded-2xl border border-[rgba(139,69,19,0.18)] bg-white/95 p-5 shadow-sm backdrop-blur-sm">
+        <section className="rounded-2xl border border-[rgba(139,69,19,0.18)] bg-white/95 p-4 sm:p-5 shadow-sm backdrop-blur-sm">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-ink-faint">
+              <p className="text-[10.5px] md:text-[11px] font-medium uppercase tracking-[0.1em] text-ink-faint">
                 Interactive Knowledge Graph Workspace
               </p>
-              <h1 className="mt-1 font-lora text-3xl font-semibold text-ink">
+              <h1 className="mt-1 font-lora text-2xl md:text-3xl font-semibold text-ink">
                 Hiligaynon Corpus & Entity Relationship Map
               </h1>
-              <p className="mt-2 max-w-4xl text-[13.5px] leading-relaxed text-ink-muted">
+              <p className="mt-2 max-w-4xl text-[12.5px] md:text-[13.5px] leading-relaxed text-ink-muted">
                 Extracts and links named entities across verified Hiligaynon documents. Discovers
                 semantic predicates (<span className="italic text-accent">nagbisita, nakigkita, ginhiwat, ginpahayag</span>),
                 co-occurrence patterns, and community hubs with organic force-directed physics.
@@ -666,28 +735,45 @@ export function KnowledgeGraphView() {
             </div>
 
             {/* Export Toolbar */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={handleExportJson}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(139,69,19,0.2)] bg-paper px-3 py-1.5 text-[12px] font-medium text-ink transition-colors hover:bg-paper-mid shadow-xs"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(139,69,19,0.2)] bg-paper px-3 py-1.5 text-[11.5px] md:text-[12px] font-medium text-ink transition-colors hover:bg-paper-mid shadow-xs active:scale-95"
                 title="Download Cytoscape/NetworkX JSON"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                JSON Export
+                <span>JSON Export</span>
               </button>
               <button
                 onClick={handleExportCsv}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(139,69,19,0.2)] bg-paper px-3 py-1.5 text-[12px] font-medium text-ink transition-colors hover:bg-paper-mid shadow-xs"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(139,69,19,0.2)] bg-paper px-3 py-1.5 text-[11.5px] md:text-[12px] font-medium text-ink transition-colors hover:bg-paper-mid shadow-xs active:scale-95"
                 title="Download CSV Edge List"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
-                CSV Edges
+                <span>CSV Edges</span>
               </button>
             </div>
           </div>
 
+          {/* Mobile Filter Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setShowMobileFilters((prev) => !prev)}
+            className="mt-3.5 flex w-full items-center justify-between rounded-xl border border-[rgba(139,69,19,0.18)] bg-paper-warm px-3.5 py-2.5 text-[12.5px] font-semibold text-ink lg:hidden active:scale-[0.99]"
+          >
+            <span className="flex items-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              <span>Graph Filters & Settings</span>
+            </span>
+            <span className="text-[11.5px] font-semibold text-accent">
+              {showMobileFilters ? "▲ Hide Filters" : `▼ Filters (${selectedTypes.size} types active)`}
+            </span>
+          </button>
+
           {/* Filtering and Controls Toolbar */}
-          <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(280px,1.2fr)_minmax(240px,0.9fr)_minmax(300px,1.2fr)]">
+          <div className={`mt-4 lg:mt-5 grid gap-3.5 lg:grid-cols-[minmax(280px,1.2fr)_minmax(240px,0.9fr)_minmax(300px,1.2fr)] ${showMobileFilters ? "grid" : "hidden lg:grid"}`}>
             {/* Entity Type Filters */}
             <div className="rounded-xl border border-[rgba(139,69,19,0.14)] bg-paper p-3.5">
               <div className="flex items-center justify-between">
@@ -863,7 +949,7 @@ export function KnowledgeGraphView() {
             </div>
 
             {simNodes.length === 0 ? (
-              <div className="flex h-[620px] items-center justify-center rounded-xl border border-dashed border-[rgba(139,69,19,0.2)] bg-paper text-[13px] text-ink-muted">
+              <div className="flex h-[380px] sm:h-[480px] md:h-[620px] items-center justify-center rounded-xl border border-dashed border-[rgba(139,69,19,0.2)] bg-paper p-6 text-center text-[13px] text-ink-muted">
                 No nodes match the active filters. Try lowering the mention threshold or clearing search.
               </div>
             ) : (
@@ -872,8 +958,12 @@ export function KnowledgeGraphView() {
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={handleTouchEnd}
                 onWheel={handleWheel}
-                className="relative h-[620px] w-full overflow-hidden rounded-xl border border-[rgba(139,69,19,0.15)] bg-[#fbf7f1] cursor-grab active:cursor-grabbing select-none"
+                className="relative h-[380px] sm:h-[480px] md:h-[620px] w-full overflow-hidden rounded-xl border border-[rgba(139,69,19,0.15)] bg-[#fbf7f1] cursor-grab active:cursor-grabbing select-none touch-none"
               >
                 <svg
                   width="100%"
@@ -1006,6 +1096,11 @@ export function KnowledgeGraphView() {
                             e.stopPropagation();
                             setDraggedNodeId(node.id);
                           }}
+                          onTouchStart={(e) => {
+                            e.stopPropagation();
+                            setSelectedNodeId(node.id);
+                            setDraggedNodeId(node.id);
+                          }}
                           className="cursor-pointer"
                           opacity={isDimmed ? 0.2 : 1}
                         >
@@ -1048,18 +1143,74 @@ export function KnowledgeGraphView() {
                 {/* Floating Canvas Badges */}
                 <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-lg bg-white/85 px-2.5 py-1 text-[11px] font-medium text-ink-muted shadow-2xs backdrop-blur-xs border border-[rgba(139,69,19,0.12)]">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                  <span>Force Simulation Active</span>
+                  <span>Force Simulation</span>
                   <span className="text-ink-faint">|</span>
-                  <span>Zoom: {Math.round(zoom * 100)}%</span>
+                  <span>{Math.round(zoom * 100)}%</span>
                 </div>
+              </div>
+            )}
+
+            {/* Docked Mobile Node Inspector (rendered below canvas on < xl screens) */}
+            {selectedNode && (
+              <div className="mt-3 block xl:hidden rounded-2xl border border-[rgba(139,69,19,0.18)] bg-white p-4 shadow-sm animate-sheet-up">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-accent/10 text-accent">
+                      {selectedNode.kind === "document" ? "Document" : selectedNode.entityType}
+                    </span>
+                    <span className="text-[11.5px] text-ink-muted">
+                      {selectedNode.mentionCount} mentions • {selectedNode.docCount} docs
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleCenterNode(selectedNode.id)}
+                      className="rounded-lg border border-accent/20 bg-accent/10 px-2.5 py-1 text-[11px] font-semibold text-accent transition hover:bg-accent/20"
+                    >
+                      Center ⌖
+                    </button>
+                    <button
+                      onClick={() => setSelectedNodeId(null)}
+                      className="flex h-7 w-7 items-center justify-center rounded-full bg-paper-warm text-ink-muted hover:text-ink text-[12px]"
+                      aria-label="Deselect"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+                <h3 className="mt-1.5 font-lora text-[16px] font-semibold text-ink">
+                  {selectedNode.label}
+                </h3>
+                {connectedEdges.length > 0 && (
+                  <div className="mt-2.5 max-h-[140px] overflow-y-auto space-y-1.5 border-t border-[rgba(139,69,19,0.1)] pt-2 text-[12px]">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint">
+                      Strongest Relationships ({connectedEdges.length})
+                    </p>
+                    {connectedEdges.slice(0, 5).map((edge) => {
+                      const otherId = edge.source === selectedNode.id ? edge.target : edge.source;
+                      return (
+                        <div
+                          key={edge.id}
+                          onClick={() => setSelectedNodeId(otherId)}
+                          className="flex items-center justify-between rounded-lg bg-paper-warm/70 px-2.5 py-1.5 cursor-pointer active:bg-paper-mid"
+                        >
+                          <span className="font-medium text-ink truncate mr-2">{getNodeLabel(otherId)}</span>
+                          <span className="text-[11px] font-medium text-accent flex-shrink-0">
+                            {edge.relation || "related"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           {/* Right Column: Node Inspector & Entity Hubs */}
           <div className="space-y-5">
-            {/* Node Inspector */}
-            <div className="rounded-2xl border border-[rgba(139,69,19,0.16)] bg-white p-4 shadow-sm">
+            {/* Node Inspector (Desktop only, mobile uses docked inspector) */}
+            <div className="hidden xl:block rounded-2xl border border-[rgba(139,69,19,0.16)] bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <h3 className="font-lora text-[19px] font-semibold text-ink">Node Inspector</h3>
                 {selectedNode && (

@@ -10,7 +10,12 @@ import { ENTITY_CONFIG } from "@/lib/entityConfig";
 import { mergeAdjacentEntities } from "@/lib/entityUtils";
 import type { NEREntity, PredictResponse, SessionStats } from "@/types/ner";
 
-export function NERAnalyzer({ initialText = "" }: { initialText?: string }) {
+interface NERAnalyzerProps {
+  initialText?: string;
+  onStateChange?: (data: { entities: NEREntity[]; stats: SessionStats }) => void;
+}
+
+export function NERAnalyzer({ initialText = "", onStateChange }: NERAnalyzerProps) {
   const [inputText, setInputText] = useState(initialText);
   const [analyzedText, setAnalyzedText] = useState("");
   const [entities, setEntities] = useState<NEREntity[]>([]);
@@ -27,6 +32,10 @@ export function NERAnalyzer({ initialText = "" }: { initialText?: string }) {
       setInputText(initialText);
     }
   }, [initialText]);
+
+  useEffect(() => {
+    onStateChange?.({ entities, stats });
+  }, [entities, stats, onStateChange]);
 
   const handleAnalyze = useCallback(async () => {
     const text = inputText.trim();
@@ -68,7 +77,7 @@ export function NERAnalyzer({ initialText = "" }: { initialText?: string }) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
+        {/* Sidebar (desktop only) */}
         <Sidebar entities={entities} sessionStats={stats} />
 
         {/* Main panel */}
@@ -81,10 +90,10 @@ export function NERAnalyzer({ initialText = "" }: { initialText?: string }) {
             isLoading={isLoading}
           />
 
-          <div className="flex-1 overflow-y-auto px-8 py-6">
+          <div className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-6 pb-24 md:pb-6">
             {error ? (
               <div
-                className="mb-6 flex flex-col items-center justify-center rounded-xl border border-red-100 bg-red-50/50 p-8 text-center text-red-800"
+                className="mb-6 flex flex-col items-center justify-center rounded-xl border border-red-100 bg-red-50/50 p-6 md:p-8 text-center text-red-800"
                 role="alert"
               >
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
@@ -92,8 +101,8 @@ export function NERAnalyzer({ initialText = "" }: { initialText?: string }) {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <h3 className="mb-1 text-lg font-semibold text-red-900">Application Error</h3>
-                <p className="max-w-md text-[14px] leading-relaxed text-red-700/80">
+                <h3 className="mb-1 text-base md:text-lg font-semibold text-red-900">Application Error</h3>
+                <p className="max-w-md text-[13px] md:text-[14px] leading-relaxed text-red-700/80">
                   {error.includes('API error') || error.includes('fetch') || error.includes('network') 
                     ? "The HiliTag AI model is currently offline or unreachable. Please ensure the Flask inference service is running correctly on the backend." 
                     : error}
@@ -109,7 +118,9 @@ export function NERAnalyzer({ initialText = "" }: { initialText?: string }) {
             )}
           </div>
 
-          <ModelStrip />
+          <div className="hidden md:block">
+            <ModelStrip />
+          </div>
         </main>
       </div>
     </div>

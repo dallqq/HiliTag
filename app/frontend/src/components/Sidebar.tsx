@@ -14,7 +14,7 @@ export function Sidebar({ entities, sessionStats }: SidebarProps) {
 
   return (
     <aside
-      className="flex w-[220px] min-w-[220px] flex-col gap-6 border-r border-[rgba(139,69,19,0.15)] bg-paper px-4 py-6"
+      className="hidden md:flex w-[220px] min-w-[220px] flex-col gap-6 border-r border-[rgba(139,69,19,0.15)] bg-paper px-4 py-6"
       aria-label="Entity legend and statistics"
     >
       {/* Entity legend */}

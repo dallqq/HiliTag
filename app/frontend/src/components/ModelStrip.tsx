@@ -41,7 +41,7 @@ export function ModelStrip() {
   return (
     <>
       <footer
-        className="flex items-center gap-2.5 border-t border-[rgba(139,69,19,0.15)] bg-paper-warm px-8 py-2 text-[11.5px] text-ink-muted"
+        className="flex items-center gap-2 border-t border-[rgba(139,69,19,0.15)] bg-paper-warm px-3 sm:px-8 py-2 text-[11px] sm:text-[11.5px] text-ink-muted"
         aria-label="Model information"
       >
         <svg
@@ -52,13 +52,14 @@ export function ModelStrip() {
           stroke="currentColor"
           strokeWidth="1.5"
           aria-hidden="true"
+          className="flex-shrink-0"
         >
           <rect x="4" y="4" width="16" height="16" rx="2" />
           <rect x="9" y="9" width="6" height="6" />
           <path d="M15 2v2M9 2v2M2 9h2M2 15h2M22 9h-2M22 15h-2M15 22v-2M9 22v-2" />
         </svg>
 
-        <span className="flex items-center gap-1.5 rounded-full border border-[rgba(139,69,19,0.15)] bg-paper-mid px-2.5 py-0.5 text-[11px] font-medium text-ink">
+        <span className="flex items-center gap-1.5 rounded-full border border-[rgba(139,69,19,0.15)] bg-paper-mid px-2.5 py-0.5 text-[10.5px] sm:text-[11px] font-medium text-ink flex-shrink-0">
           <span
             className={`h-2 w-2 rounded-full ${
               isLive === true
@@ -68,17 +69,17 @@ export function ModelStrip() {
                 : "bg-gray-400"
             }`}
           />
-          {modelName ?? "checking..."}
+          <span className="truncate max-w-[120px] sm:max-w-none">{modelName ?? "checking..."}</span>
         </span>
 
-        <span>·</span>
-        <span>Fine-tuned for Hiligaynon · 6 OntoNotes categories</span>
+        <span className="hidden sm:inline">·</span>
+        <span className="hidden sm:inline truncate">Fine-tuned for Hiligaynon · 6 categories</span>
 
         <span className="ml-auto flex items-center gap-2">
           <button
             type="button"
             onClick={() => setShowConfig(true)}
-            className="flex items-center gap-1 rounded border border-[rgba(139,69,19,0.2)] bg-paper px-2 py-0.5 text-[11px] text-ink-muted transition hover:border-accent hover:text-ink"
+            className="flex items-center gap-1 rounded-lg border border-[rgba(139,69,19,0.2)] bg-paper px-2 py-0.5 text-[10.5px] sm:text-[11px] text-ink-muted transition hover:border-accent hover:text-ink active:scale-95"
             title="Configure Backend API URL"
           >
             <svg
@@ -92,14 +93,16 @@ export function ModelStrip() {
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
-            API: {apiUrl.replace(/^https?:\/\//, "") || "localhost:5000"}
+            <span className="truncate max-w-[90px] sm:max-w-[150px]">
+              API: {apiUrl.replace(/^https?:\/\//, "") || "localhost:5000"}
+            </span>
           </button>
         </span>
       </footer>
 
       {showConfig && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl border border-[rgba(139,69,19,0.2)] bg-paper p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/45 p-0 sm:p-4 backdrop-blur-xs">
+          <div className="animate-sheet-up w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-[rgba(139,69,19,0.2)] bg-paper p-5 sm:p-6 pb-safe shadow-xl">
             <h3 className="font-lora text-[16px] font-semibold text-ink">
               Configure Flask Backend API
             </h3>

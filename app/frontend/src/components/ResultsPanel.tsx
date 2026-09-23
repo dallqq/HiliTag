@@ -6,6 +6,7 @@ import { mergeAdjacentEntities } from "@/lib/entityUtils";
 import { NERHighlighter } from "./NERHighlighter";
 import { EntityTable } from "./EntityTable";
 import { JsonOutput } from "./JsonOutput";
+import { SaveDocModal } from "./SaveDocModal";
 import type { NEREntity, PredictResponse } from "@/types/ner";
 import { saveDocumentLocally } from "@/lib/storage";
 
@@ -32,6 +33,7 @@ export function ResultsPanel({
 }: ResultsPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("annotated");
   const [saved, setSaved] = useState(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [editableEntities, setEditableEntities] = useState<NEREntity[]>(entities);
 
   useEffect(() => {
@@ -44,22 +46,15 @@ export function ResultsPanel({
     setEditableEntities(mergeAdjacentEntities(text, nextEntities));
   };
 
-  const handleSave = () => {
+  const handleSaveConfirmed = (title: string) => {
     if (!text) return;
-    const titlePrompt = prompt(
-      "Enter a title for this document:",
-      `Analyzed Doc - ${new Date().toLocaleTimeString()}`
-    );
-
-    if (titlePrompt !== null) {
-      saveDocumentLocally({
-        title: titlePrompt || "Untitled Document",
-        text,
-        entities: mergedEntities,
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    }
+    saveDocumentLocally({
+      title,
+      text,
+      entities: mergedEntities,
+    });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2200);
   };
 
   if (isLoading) {
@@ -97,43 +92,55 @@ export function ResultsPanel({
 
   return (
     <div>
+      {/* Sub-tab Navigation */}
       <div
-        className="mb-6 flex gap-0 border-b border-[rgba(139,69,19,0.15)]"
+        className="mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[rgba(139,69,19,0.15)] pb-1 sm:pb-0"
         role="tablist"
       >
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "-mb-px border-b-2 px-[18px] pb-2 pt-[8px] text-[13px] transition-all",
-              activeTab === tab.id
-                ? "border-accent font-medium text-accent"
-                : "border-transparent text-ink-muted hover:text-ink"
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-        <div className="ml-auto flex items-center gap-4 pb-2 text-[12px]">
+        <div className="flex gap-0 overflow-x-auto no-scrollbar -mx-2 px-2 sm:mx-0 sm:px-0">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "-mb-px border-b-2 px-3 sm:px-[18px] pb-2 pt-[6px] sm:pt-[8px] text-[12.5px] sm:text-[13px] whitespace-nowrap transition-all",
+                activeTab === tab.id
+                  ? "border-accent font-medium text-accent"
+                  : "border-transparent text-ink-muted hover:text-ink"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between sm:justify-end gap-3 pb-1 text-[12px]">
           {editableEntities.length > 0 && (
-            <span className="text-ink-faint">
+            <span className="text-ink-faint text-[11.5px] sm:text-[12px]">
               {editableEntities.length} entit{editableEntities.length === 1 ? "y" : "ies"} found
             </span>
           )}
           {text && (
             <button
-              onClick={handleSave}
+              onClick={() => setIsSaveModalOpen(true)}
               disabled={saved}
-              className="rounded bg-accent/10 px-3 py-1 font-medium text-accent transition-colors hover:bg-accent/20 disabled:opacity-50"
+              className="rounded-lg bg-accent/10 px-3 py-1 font-medium text-accent transition-colors hover:bg-accent/20 active:scale-95 disabled:opacity-50 text-[12px]"
             >
-              {saved ? "Saved!" : "Save Document"}
+              {saved ? "✓ Saved!" : "Save Document"}
             </button>
           )}
         </div>
       </div>
+
+      <SaveDocModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        onSave={handleSaveConfirmed}
+        textSnippet={text.slice(0, 100)}
+        entityCount={editableEntities.length}
+      />
 
       {activeTab === "annotated" && (
         <div role="tabpanel" aria-label="Annotated text">
